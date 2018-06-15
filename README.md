@@ -1,18 +1,25 @@
 # Active learning + object detection.
 Let's use wood knots data set as example: the goal label the data and to train the model that can detect wood knots. 
+Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
 As we label the data we want optimize human efforts by leveraging ML to pre-label the data.
 The flow will be:
 1) Label small set of data (Set #1) to train simple but already somewhat useful model  that can detect objects of interest (wood knots).
-   In the case with woodknots spening aroudn 1h and going though 150 images will be enough. I used VOTT tool for bounding boxes drawing.
+   In the case with wood knots spending around 1h and going though 150 images will be enough. I used [VOTT](https://github.com/Microsoft/VoTT) tool for bounding boxes drawing.
+   I've shared my labeleing results for Set #1 [here](https://olgaliakrepo.blob.core.windows.net/woodknots/labeled_set1_VOTT.7z): import board_images_set1 folder to VOTT while makeing sure that board_images_set1.json is located at the ame level as folder with images. Json files contains info about bounding boxes lcoation that I have marked.
+
+   Here example of labeling flow in VOTT: I've labled wood "knots" (round shapes) and "defect" (pretty much  non-round shaped type of defect):
+
+![Labeling](images/VOTT_knot_defect.PNG)
+
 2) Train Model #1
 3) Now select bigger set of images that were not used in Set #1. This will be our Set #2.
 4) User Model #1 for inference on Set #2: the models should be able to detect quite a bit objects of interest.
 5) Load object detection results from previous step into the labeling tool (VOTT).
-6) Now istead of "labeling from scratch" human will much quicker review detection results from Model #1 and make small adjustments.
+6) Now instead of "labeling from scratch" human will much quicker review detection results from Model #1 and make small adjustments.
 7) Combine training Set #1 and Set #2. Train Model #2. Observe how Model #2 overall performance increases. Celebrate :).
 
 # Code setup
-The process in this repo hevily relies on Tensorflow Object Detection API.  So as pre-req make sure you have it working on the samples.
+The process in this repo heavily relies on Tensorflow Object Detection API.  So as pre-req make sure you have it working on the samples.
 Further below I assume you cloned TF object detection to a location like:
 `repo\models`
 1)  Create TF records for training (and evaluation: use --set=val param)
@@ -66,13 +73,13 @@ d) Added more data augmentation options:
 
 The results of detection will be saved in csv file: woodknots_detection_log.csv. Each row in the csv file contaings location of the detected object and its class.
 
-8) Next step is about conerting csv file with detection results to the format supported labeling tool of choice.
+8) Next step is about converting csv file with detection results to the format supported labeling tool of choice.
 
 For using VOTT run this script: 
 
 `\object_detection\active-learning-detect\convert_vott.py --input "C:\data\woodknots\set2_res\woodknots_detection_log.csv" --output "C:\data\woodknots\set2_res\vott.json"`
 
-9) Now you have Set #2 pre-labeled.  To load it to VOTT copy _vott.json_ from previous step to the same level as your FOLDER_WITH_SET2_IMAGES and rename vott.json to _FOLDER_WITH_SET2_IMAGES.json_. Then start VOTT, load FOLDER_WITH_SET2_IMAGES for tagging, review pre-labled info, fix lables.
+9) Now you have Set #2 pre-labeled.  To load it to VOTT copy _vott.json_ from previous step to the same level as your FOLDER_WITH_SET2_IMAGES and rename vott.json to _FOLDER_WITH_SET2_IMAGES.json_. Then start VOTT, load FOLDER_WITH_SET2_IMAGES for tagging, review pre-labeled info, fix labels.
 
 10) Once you get your Set2 labeled you will repeat the step of coverting dataset (now with SET #2) to tfrecords.
 
