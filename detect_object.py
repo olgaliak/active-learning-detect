@@ -107,8 +107,6 @@ def detect(input_dir,
     skipped_dets = 0
     for i in range(len(images)):
         image_name = os.path.basename(image_names[i])
-        if (image_name == 'st1226.png'):
-            print(image_name)
         per_score = scores_total[i]
         per_class = classes_total[i]
         per_box = boxes_total[i]

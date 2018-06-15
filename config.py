@@ -6,6 +6,8 @@ class config:
 	CROPS_DIR = "cropped"
 	REDACTED_DIR = "redacted"
 	OUTPUT_DIR = "output"
+	MIN_CROP_DIM = 20
+	CROP_CLASS = "knot"
 
 	OUTPUT_CLASSES = ['knot','defect']
 	ID_CLASSES = [1,2]
