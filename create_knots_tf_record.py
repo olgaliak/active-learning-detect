@@ -163,7 +163,7 @@ def main(_):
   for idx, example in enumerate(examples_list):
     if idx % 10 == 0:
       logging.info('On image %d of %d', idx, len(examples_list))
-      print('On image %d of %d'.format(idx, len(examples_list)))
+      print('On image {0} of {1}'.format(idx, len(examples_list)))
     path = os.path.join(annotations_dir, example + '.xml')
     with tf.gfile.GFile(path, 'r') as fid:
       xml_str = fid.read()
