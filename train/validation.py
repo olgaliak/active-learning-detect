@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import csv
 from collections import defaultdict
+from functools import partial
 HEIGHT, WIDTH = 1000, 1000
 FILENAME_LOCATION=0
 FOLDER_LOCATION=8
@@ -25,7 +26,7 @@ def detectortest(predictions, ground_truths, output, user_folders):
         else:
             for row in reader:
                 all_detector_preds[row[FILENAME_LOCATION]][row[CLASS_LOCATION]].append(row[PREDS_START:PREDS_END+1])
-    all_gtruths = defaultdict(list)
+    all_gtruths = defaultdict(lambda: defaultdict(list))
     with open(ground_truths, 'r') as truths_file:
         reader = csv.reader(truths_file)
         next(reader, None)
@@ -42,11 +43,11 @@ def detectortest(predictions, ground_truths, output, user_folders):
         file_recalls = []
         for classname, ground_preds in all_gtruths[filename].items():
             ground_truth = np.zeros((HEIGHT, WIDTH))
-            for xmin,xmax,ymin,ymax in ground_preds:
+            for xmin,xmax,ymin,ymax in map(partial(map, float), ground_preds):
                 ground_truth[int(ymin*HEIGHT):int(ymax*HEIGHT), int(xmin*WIDTH):int(xmax*WIDTH)] = 1
             det_preds = all_detector_preds[filename][classname]
             detection = np.zeros((HEIGHT, WIDTH))
-            for xmin,xmax,ymin,ymax in det_preds:
+            for xmin,xmax,ymin,ymax in map(partial(map, float), det_preds):
                 detection[int(ymin*HEIGHT):int(ymax*HEIGHT), int(xmin*WIDTH):int(xmax*WIDTH)] = 1
             ground_area = ground_truth.sum()
             detect_area = detection.sum()
@@ -64,12 +65,18 @@ def detectortest(predictions, ground_truths, output, user_folders):
     with open(output, 'w') as out_file:
         out_file.write("Average Precision: {}, Recall: {}, F1-Score: {}".format(avg_prec, avg_recall, f1_score))
 if __name__ == "__main__":
-    import sys
     import re
     from azure.storage.blob import BlockBlobService
-    sys.path.append("..")
+    import sys
+    import os    
+    module_dir = os.path.split(os.getcwd())[0]
+    # Allow us to import MLModule
+    if module_dir not in sys.path:
+        sys.path.append(module_dir)
     from utils.config import Config
-    config_file = Config.parse_file("config.ini")
+    if len(sys.argv)<2:
+        raise ValueError("Need to specify config file")
+    config_file = Config.parse_file(sys.argv[1])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'test_(.*).csv', blob.name)]

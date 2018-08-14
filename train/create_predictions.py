@@ -12,7 +12,7 @@ def calculate_confidence(predictions):
     return min([float(prediction[0]) for prediction in predictions])
 
 def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str], all_sizes: List[Tuple[int]], 
-        tagged_output: str, untagged_output: str, file_set: AbstractSet, user_folders: bool = True):
+        untagged_output: str, tagged_output: str, file_set: AbstractSet, user_folders: bool = True):
     '''
     Convert list of Detector class predictions as well as list of image sizes
     into a dict matching the VOTT json format.
@@ -106,9 +106,15 @@ if __name__ == "__main__":
     from tf_detector import TFDetector
     import re
     import sys
-    sys.path.append("..")
+    import os    
+    module_dir = os.path.split(os.getcwd())[0]
+    # Allow us to import MLModule
+    if module_dir not in sys.path:
+        sys.path.append(module_dir)
     from utils.config import Config
-    config_file = Config.parse_file("config.ini")
+    if len(sys.argv)<2:
+        raise ValueError("Need to specify config file")
+    config_file = Config.parse_file(sys.argv[1])
     image_dir = config_file["image_dir"]
     untagged_output = config_file["untagged_output"]
     tagged_output = config_file["tagged_predictions"]
