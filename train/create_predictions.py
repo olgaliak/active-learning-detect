@@ -106,12 +106,12 @@ if __name__ == "__main__":
     from tf_detector import TFDetector
     import re
     import sys
-    import os    
-    module_dir = os.path.split(os.getcwd())[0]
-    # Allow us to import MLModule
-    if module_dir not in sys.path:
-        sys.path.append(module_dir)
-    from utils.config import Config
+    import os
+    # Allow us to import utils
+    config_dir = str(Path(os.getcwd()).parent / "utils")
+    if config_dir not in sys.path:
+        sys.path.append(config_dir)
+    from config import Config
     if len(sys.argv)<2:
         raise ValueError("Need to specify config file")
     config_file = Config.parse_file(sys.argv[1])
