@@ -9,7 +9,7 @@ The flow will be:
 
    Here example of labeling flow in VOTT: I've labled wood "knots" (round shapes) and "defect" (pretty much  non-round shaped type of defect):
 
-![Labeling](images/VOTT_knot_defect.PNG)
+![Labeling](Legacy/images/VOTT_knot_defect.PNG)
 
 2) Train Model #1
 3) Now select bigger set of images that were not used in Set #1. This will be our Set #2.
