@@ -3,6 +3,7 @@ import cv2
 import csv
 from collections import defaultdict
 from functools import partial
+from pathlib import Path
 HEIGHT, WIDTH = 1000, 1000
 FILENAME_LOCATION=0
 FOLDER_LOCATION=8
