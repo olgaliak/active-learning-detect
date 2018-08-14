@@ -116,9 +116,15 @@ if __name__ == "__main__":
     #select_jsons(r"C:\Users\t-yapand\Desktop\GAUCC",r"C:\Users\t-yapand\Desktop\GAUCC.json",True,r"C:\Users\t-yapand\Desktop\GAUCC1_1533070038606.csv")
     from azure.storage.blob import BlockBlobService
     import sys
-    sys.path.append("..")
+    import os    
+    module_dir = os.path.split(os.getcwd())[0]
+    # Allow us to import MLModule
+    if module_dir not in sys.path:
+        sys.path.append(module_dir)
     from utils.config import Config
-    config_file = Config.parse_file("config.ini")
+    if len(sys.argv)<2:
+        raise ValueError("Need to specify config file")
+    config_file = Config.parse_file(sys.argv[1])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
