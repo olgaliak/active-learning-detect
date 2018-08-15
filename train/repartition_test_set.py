@@ -4,6 +4,7 @@ import random
 import time
 from collections import defaultdict
 from azure.storage.blob import BlockBlobService
+from pathlib import Path
 import sys
 import os
 
