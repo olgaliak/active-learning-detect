@@ -19,11 +19,11 @@ envsubst < $pipeline_file > $temp_pipeline
 # Train model on TFRecord
 echo "Training model"
 rm -rf $train_dir
-python ${tf_location}/train.py --logtostderr --train_dir=$train_dir --pipeline_config_path=$temp_pipeline
+python ${tf_location}/train.py --train_dir=$train_dir --pipeline_config_path=$temp_pipeline --alsologtostderr
 # Export inference graph of model
 echo "Exporting inference graph"
 rm -rf $inference_output_dir
-python ${tf_location}/export_inference_graph.py --input_type image_tensor --pipeline_config_path $temp_pipeline --trained_checkpoint_prefix ${train_dir}/model.ckpt-$train_iterations --output_directory $inference_output_dir
+python ${tf_location}/export_inference_graph.py --input_type "image_tensor" --pipeline_config_path "$temp_pipeline" --trained_checkpoint_prefix "${train_dir}/model.ckpt-$train_iterations" --output_directory "$inference_output_dir"
 # TODO: Validation on Model, keep track of MAP etc.
 # Use inference graph to create predictions on untagged images
 echo "Creating new predictions"
