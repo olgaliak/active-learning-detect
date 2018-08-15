@@ -12,10 +12,18 @@ python ${python_file_directory}/update_blob_folder.py cur_config.ini
 # Create TFRecord from images + csv file on blob storage
 echo "Creating TF Record"
 python ${python_file_directory}/convert_tf_record.py cur_config.ini
+# Download tf model if it doesn't exist
+if [ ! -d "$downlod_location" ]; then
+  wget -O ${download_location}.tar.gz $tf_url
+  tar -xzf ${download_location}.tar.gz -C $download_location
+fi
 # pipeline.config from bash variables
 echo "Making pipeline file from env vars"
 temp_pipeline=${pipeline_file%.*}_temp.${pipeline_file##*.}
-envsubst < $pipeline_file > $temp_pipeline
+sed 's/echo ${old_label_path//\//\\/}/${label_map_path//\//\\/}/g' pipeline.config > $temp_pipeline
+sed -i 's/echo ${old_train_path//\//\\/}/${tf_train_record//\//\\/}/g' $temp_pipeline
+sed -i 's/echo ${old_val_path//\//\\/}/${tf_val_record//\//\\/}/g' $temp_pipeline
+sed -i 's/echo ${old_checkpoint_path//\//\\/}/${fine_tune_checkpoint//\//\\/}/g' $temp_pipeline
 # Train model on TFRecord
 echo "Training model"
 rm -rf $train_dir
