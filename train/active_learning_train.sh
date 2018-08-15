@@ -27,10 +27,13 @@ sed "s/${old_label_path//\//\\/}/${label_map_path//\//\\/}/g" $pipeline_file > $
 sed -i "s/${old_train_path//\//\\/}/${tf_train_record//\//\\/}/g" $temp_pipeline
 sed -i "s/${old_val_path//\//\\/}/${tf_val_record//\//\\/}/g" $temp_pipeline
 sed -i "s/${old_checkpoint_path//\//\\/}/${fine_tune_checkpoint//\//\\/}/g" $temp_pipeline
+sed -i "s/$num_steps_marker[[:space:]]*[[:digit:]]*/$num_steps_marker $train_iterations/g" $temp_pipeline
+sed -i "s/$num_examples_marker[[:space:]]*[[:digit:]]*/$num_examples_marker $eval_iterations/g" $temp_pipeline
+sed -i "s/$num_classes_marker[[:space:]]*[[:digit:]]*/$num_classes_marker $num_classes/g" $temp_pipeline
 # Train model on TFRecord
 echo "Training model"
 rm -rf $train_dir
-python ${tf_location}/model_main.py --train_dir=$train_dir --pipeline_config_path=$temp_pipeline --alsologtostderr
+python ${tf_location}/train.py --train_dir=$train_dir --pipeline_config_path=$temp_pipeline --logtostderr
 # Export inference graph of model
 echo "Exporting inference graph"
 rm -rf $inference_output_dir
