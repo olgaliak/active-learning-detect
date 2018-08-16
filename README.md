@@ -11,10 +11,12 @@ This one (ideally) includes minimum setup. The core components here are:
 1) Azure Blob Storage with images to be labeled.
 It will also be used to save "progress" logs of labeling activities
 2) "Tagger" machine(s) 
-This is computer(s) that human annotator(s) is using as environment for labeling portion of images -- for example [VOTT](https://github.com/Microsoft/VoTT).
+This is computer(s) that human annotator(s) is using as environment for labeling portion of images -- for example [VOTT](https://github.com/Microsoft/VoTT).  
 Here example of labeling flow in VOTT: I've labled wood "knots" (round shapes) and "defect" (pretty much  non-round shaped type of defect):
 
 ![Labeling](images/VOTT_knot_defect.PNG)
+
+
 3) Model re-training machine (or service)
 This is environment were Object Detection model is retrained with growing train set as well as does predictions of bounding boxes on unlabeled images.
 There is config.ini that needs to be updated with details like blob storage connection  and model retraining configuration. 
