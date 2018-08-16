@@ -53,7 +53,7 @@ def detectortest(predictions, ground_truths, output, user_folders):
             ground_area = ground_truth.sum()
             detect_area = detection.sum()
             inter_area = (ground_truth * detection).sum()
-            precision = inter_area / detect_area
+            precision = inter_area / detect_area if detect_area!=0 else 1
             recall = inter_area / ground_area
             file_precisions.append(precision)
             file_recalls.append(recall)
