@@ -11,7 +11,10 @@ This one (ideally) includes minimum setup. The core components here are:
 1) Azure Blob Storage with images to be labeled.
 It will also be used to save "progress" logs of labeling activities
 2) "Tagger" machine(s) 
-This is computer(s) that human annotator(s) is using as environment for labeling portion of images -- for example VOTT.
+This is computer(s) that human annotator(s) is using as environment for labeling portion of images -- for example [VOTT](https://github.com/Microsoft/VoTT).
+Here example of labeling flow in VOTT: I've labled wood "knots" (round shapes) and "defect" (pretty much  non-round shaped type of defect):
+
+![Labeling](images/VOTT_knot_defect.PNG)
 3) Model re-training machine (or service)
 This is environment were Object Detection model is retrained with growing train set as well as does predictions of bounding boxes on unlabeled images.
 There is config.ini that needs to be updated with details like blob storage connection  and model retraining configuration. 
@@ -26,13 +29,12 @@ The flow below assumes the following:
 1) We use Tensorflow Object Detection API (Faster RCNN with Resnet 50 as default option)  to fine tune object detection. 
 2) Tensorflow Object Detection API is setup on Linux box (Azure DSVM is an option) that you can ssh to. See docs for Tensorflow Object Detection API regarding its general config.
 3) Data(images) is in Azure blob storage
-4) Human annotators use VOTT to label\revise images.  To support another tagging tool it's output (boudin boxes) need to be converted to csv form -- pull requests are welcomed!
+4) Human annotators use [VOTT](https://github.com/Microsoft/VoTT)  to label\revise images.  To support another tagging tool it's output (boudin boxes) need to be converted to csv form -- pull requests are welcomed!
 
 Here is general flow has 2 steps:
 1) Environments setup
 2) Active Learnining cycle: labeling data and running scipts to update model and feed back results for human annotator to review.  
 The whole flow is currenly automated with **4 scrips** user needs to run.
-
 
 
 ### General  prep:
@@ -80,7 +82,7 @@ Sample cmd below requests 40 images for tagging:
 `D:\repo\active-learning-detect\tag>python download_vott_json.py 40 ..\config.ini`  
 This step will create new version of totag_xyz.csv on blob storage that will have 40 images excluded from the list.  
 File tagging_abc.csv will hold list of 40 images being tagged.
-2) Start VOTT, load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
+2) Start [VOTT](https://github.com/Microsoft/VoTT) , load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
 3) Once done with labeling push results back to central storage:  
  `D:\repo\active-learning-detect\tag>python upload_vott_json.py ..\config.ini`
 This step will push tagged_123.csv to blob storage: this file contains actual bounding boxes coordinates for every image.  
@@ -99,13 +101,15 @@ Latest totag.csv will have predictions for all available images made of the newl
 ### Reviewing of pre-labeled results (on Tagger machine)
 Human annotator(s) deletes any leftovers from previous predictions (csv files in active-learning-detect\tag, image dirs) and runs goes again sequence of:
 1) Downloading next batch of pre-labeled images for review (`active-learning-detect\tag\download_vott_json.py`)
-2) Going through the pre-labeled images with VOTT and fixing bounding boxes when needed.
+2) Going through the pre-labeled images with [VOTT](https://github.com/Microsoft/VoTT)  and fixing bounding boxes when needed.
 3) Pushing back new set of labeled images to storage (`active-learning-detect\tag\upload_vott_json.py`) 
 
 Training cycle can now be repeated on bigger training set and dataset with higher quality of pre-labeled bounding boxes could be obtained. 
 
 
- 
+ # Sample dataset
+Feel free to use wood knots data set as example for wood knots detection. 
+Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
  
 
 
