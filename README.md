@@ -1,4 +1,4 @@
-# Active learning + object detection.
+# Active learning + object detection
 Labeling images for object detection is commonly required task to get started with Computer Vision related project.
 Good news that you do not have to label all images  (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process.
 We will use Transfer Learning and Active Learning as core Machine Learning  components of the pipeline.
@@ -6,7 +6,7 @@ We will use Transfer Learning and Active Learning as core Machine Learning  comp
  -- Active Learning: human annotator labels small set of images (set1), trains Object Detection Model  (model1) on this set1 and then uses model1 to predict bounding boxes on images (thus pre-labeling those). Human annotator reviews mode1's predictions where the model was less confident -- and thus comes up with new set of images -- set2. Next phase will be to train more powerful model2 on bigger train set that includes set1 and set2 and use model2 prediction results as draft of labeled set3…
 The plan is to have 2 versions of pipeline set-up.
 
-# Semi-automated pipeline.
+# Semi-automated pipeline
 This one (ideally) includes minimum setup. The core components here are: 
 1) Azure Blob Storage with images to be labeled.
 It will also be used to save "progress" logs of labeling activities
@@ -21,12 +21,11 @@ Here example of labeling flow in VOTT: I've labled wood "knots" (round shapes) a
 This is environment were Object Detection model is retrained with growing train set as well as does predictions of bounding boxes on unlabeled images.
 There is config.ini that needs to be updated with details like blob storage connection  and model retraining configuration. 
 
-# Automated pipeline.
-More details TBD. 
-
+# Automated pipeline
+More details TBD.  
 Basically the idea is to kick off Active Learning cycle with model retaining as soon as human annotator revises new set of images.
 
-# How to run semi-automated pipeline.
+# How to run semi-automated pipeline
 The flow below assumes the following:
 1) We use Tensorflow Object Detection API (Faster RCNN with Resnet 50 as default option)  to fine tune object detection. 
 2) Tensorflow Object Detection API is setup on Linux box (Azure DSVM is an option) that you can ssh to. See docs for Tensorflow Object Detection API regarding its general config.
@@ -39,12 +38,12 @@ Here is general flow has 2 steps:
 The whole flow is currenly automated with **4 scrips** user needs to run.
 
 
-### General  prep:
+### General  prep
 1) Provision Azure Blob storage. Create 2 containers: _"activelearningimages"_ and _"activelearninglabels"_
 2) Upload unzipped folder with images to  _"activelearningimages"_ container.
 
 
-### On Linux box aka Model (re)training env:
+### On Linux box aka Model (re)training env
 1) Setup Tensorflow Object Detection API if you have not already.
 This will include cloning of https://github.com/tensorflow/models. (On my machine I have it cloned to `/home/olgali/repos/models`).
  Run `research/object_detection/object_detection_tutorial.ipynb` to make sure Tensorflow Object Detection API is functioning.
@@ -58,7 +57,7 @@ Example:
 `python_file_directory=/home/olgali/repos/models/research/active-learning-detect/train`
 3) pip install azure-blob packages: azure.storage.blob
 
-### Tagger machine(s) (could be same as Linux box or separate boxes\vms):
+### Tagger machine(s) (could be same as Linux box or separate boxes\vms)
 1) Have Python 3.5 up and running.
 2) Pip install azure-blob packages: azure.storage.blob
 3) Clone this repo, copy  updated config.ini from Model re-training box (as it has Azure Blob Storage and other generic info already).
@@ -70,7 +69,7 @@ Overview: you will run **4 scripts* in total:
 - two scipts on the machine where model (re)training happens and 
 - two scripts where human annotators label images (or review images pre-labeled by the model).
 
-### On Linux box aka Model (re)training env:
+### On Linux box aka Model (re)training env
 Run bash script to Init pipeline  
 `~/repos/models/research/active-learning-detect/train$ . ./active_learning_initialize.sh  ../config.ini`
 This step will:
@@ -78,7 +77,7 @@ This step will:
 - Create totag_xyz.csv on the blob storage ( "activelearninglabels" container by default).  
 This is the snapshot of images file names that need tagging (labeling).  As human annotators make progress on labeling data the list will get smaller and smaller.
 
-### Tagger machine(s):
+### Tagger machine(s)
 1) Start each "phase" with downloading images to label (or to review pre-labeled images).  
 Sample cmd below requests 40 images for tagging:  
 `D:\repo\active-learning-detect\tag>python download_vott_json.py 40 ..\config.ini`  
@@ -93,7 +92,7 @@ Tagging_abc.csv will contain list of files that are "work in progress" -- the on
   
 Now model can be trained.
 
-### Model(re)training on Linux box:
+### Model(re)training on Linux box
 Run bash script:  
 `~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`  
 This script will kick of training based on available labeled data.  
@@ -109,8 +108,8 @@ Human annotator(s) deletes any leftovers from previous predictions (csv files in
 Training cycle can now be repeated on bigger training set and dataset with higher quality of pre-labeled bounding boxes could be obtained. 
 
 
- # Sample dataset
-Feel free to use wood knots data set as example for wood knots detection. 
+# Sample dataset
+I'm using wood knots dataset mentioned in this [blog](http://blog.revolutionanalytics.com/2017/09/wood-knots.html) 
 Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
  
 
