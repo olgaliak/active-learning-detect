@@ -7,6 +7,9 @@ We will use Transfer Learning and Active Learning as core Machine Learning  comp
 The plan is to have 2 versions of pipeline set-up.
 
 # Semi-automated pipeline
+
+![Flow](images/semi_automated.png)  
+
 This one (ideally) includes minimum setup. The core components here are: 
 1) Azure Blob Storage with images to be labeled.
 It will also be used to save "progress" logs of labeling activities
@@ -26,7 +29,7 @@ More details TBD.
 Basically the idea is to kick off Active Learning cycle with model retaining as soon as human annotator revises new set of images.
 
 # How to run semi-automated pipeline
-The flow below assumes the following:
+The flow below assumes the following: 
 1) We use Tensorflow Object Detection API (Faster RCNN with Resnet 50 as default option)  to fine tune object detection. 
 2) Tensorflow Object Detection API is setup on Linux box (Azure DSVM is an option) that you can ssh to. See docs for Tensorflow Object Detection API regarding its general config.
 3) Data(images) is in Azure blob storage
