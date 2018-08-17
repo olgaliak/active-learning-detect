@@ -9,7 +9,7 @@ import sys
 import os
 
 # Allow us to import utils
-config_dir = str(Path(os.getcwd()).parent / "utils")
+config_dir = str(Path.cwd().parent / "utils")
 if config_dir not in sys.path:
     sys.path.append(config_dir)
 from config import Config

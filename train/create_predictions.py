@@ -108,7 +108,7 @@ if __name__ == "__main__":
     import sys
     import os
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config
@@ -121,8 +121,14 @@ if __name__ == "__main__":
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
-    block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
+    if file_date:
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
+    else:
+        raise ValueError("No Tagging Data. Cannot evaluate without tagging data.")
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
-    block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+    if file_date:
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+    else:
+        raise ValueError("No Tagging Data. Cannot evaluate without tagging data.")
     cur_detector = TFDetector(config_file["classes"].split(","), str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb"))
     get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, "tagged.csv", "tagging.csv", filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")

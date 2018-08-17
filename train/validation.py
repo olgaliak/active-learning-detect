@@ -53,7 +53,7 @@ def detectortest(predictions, ground_truths, output, user_folders):
             ground_area = ground_truth.sum()
             detect_area = detection.sum()
             inter_area = (ground_truth * detection).sum()
-            precision = inter_area / detect_area
+            precision = inter_area / detect_area if detect_area!=0 else 1
             recall = inter_area / ground_area
             file_precisions.append(precision)
             file_recalls.append(recall)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     import sys
     import os    
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config

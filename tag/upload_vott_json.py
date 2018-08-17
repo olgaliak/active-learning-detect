@@ -79,7 +79,7 @@ if __name__ == "__main__":
     import sys
     import os    
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config
@@ -94,6 +94,6 @@ if __name__ == "__main__":
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged_tagging.csv")
     #TODO: Ensure this parses folder recursively when given tagging location. Remove the .json part
-    select_jsons(config_file["tagging_location"],config_file["user_folders"],"tagged")
+    select_jsons(config_file["tagging_location"],config_file["user_folders"]=="True","tagged")
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagged",int(time.time() * 1000),"csv"), "tagged.csv")
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), "tagged_tagging.csv")

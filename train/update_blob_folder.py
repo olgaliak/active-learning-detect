@@ -16,7 +16,7 @@ if __name__ == "__main__":
     import os    
     module_dir = os.path.split(os.getcwd())[0]
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config

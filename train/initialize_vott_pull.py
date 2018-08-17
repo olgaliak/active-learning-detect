@@ -33,7 +33,7 @@ if __name__ == "__main__":
     import sys
     import os
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config
@@ -42,5 +42,5 @@ if __name__ == "__main__":
     config_file = Config.parse_file(sys.argv[1])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
-    select_jsons(config_file["image_dir"],config_file["user_folders"], config_file["classes"].split(","), "totag.csv", config_file["label_map_path"])
+    select_jsons(config_file["image_dir"],config_file["user_folders"]=="True", config_file["classes"].split(","), "totag.csv", config_file["label_map_path"])
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), "totag.csv")
