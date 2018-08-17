@@ -19,7 +19,9 @@ if [ ! -d "$download_location" ]; then
   tar -xzf ${download_location}/${model_name}.tar.gz -C $download_location
 fi
 if [ ! -z "$optional_pipeline_url" ]; then
-  curl $optional_pipeline_url -o ${download_location}/${model_name}/pipeline.config
+  curl $optional_pipeline_url -o $pipeline_file
+elif [ ! -f $pipeline_file ]; then
+  cp ${download_location}/${model_name}/pipeline.config $pipeline_file
 fi
 echo "Making pipeline file from env vars"
 temp_pipeline=${pipeline_file%.*}_temp.${pipeline_file##*.}
