@@ -1,7 +1,7 @@
 import csv
 import json
 from collections import defaultdict
-from heapq import nlargest
+from heapq import nlargest, nsmallest
 from typing import List, Tuple, Dict
 from pathlib import Path
 import shutil
@@ -72,7 +72,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
     with open(str(output_location)+".json","w") as json_out:
         json.dump(dirjson, json_out)
 
-def get_top_rows(file_location, num_rows, user_folders):
+def get_top_rows(file_location, num_rows, user_folders, pick_max):
     with open(file_location+".csv", 'r') as file:
         reader = csv.reader(file)
         header = next(reader)
@@ -82,18 +82,24 @@ def get_top_rows(file_location, num_rows, user_folders):
         for row in csv_list:
             all_files[row[FOLDER_LOCATION]][row[0]].append(row)
         all_lists = []
-        for folder_name in all_files:
-            all_lists.append(nlargest(num_rows, all_files[folder_name].values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION])))
-        top_rows = max(all_lists,key=lambda x:sum(float(row[0][CONFIDENCE_LOCATION]) for row in x))
+        if pick_max:
+            for folder_name in all_files:
+                all_lists.append(nlargest(num_rows, all_files[folder_name].values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION])))
+            top_rows = max(all_lists,key=lambda x:sum(float(row[0][CONFIDENCE_LOCATION]) for row in x))
+        else:
+            for folder_name in all_files:
+                all_lists.append(nsmallest(num_rows, all_files[folder_name].values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION])))
+            top_rows = min(all_lists,key=lambda x:sum(float(row[0][CONFIDENCE_LOCATION]) for row in x))
     else:
         all_files = defaultdict(list)
         for row in csv_list:
             all_files[row[0]].append(row)
-        top_rows = nlargest(num_rows, all_files.values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION]))
-        
+        if pick_max:
+            top_rows = nlargest(num_rows, all_files.values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION]))
+        else:
+            top_rows = nsmallest(num_rows, all_files.values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION]))
     tagging_files = {row[0][0] for row in top_rows}
     file_exists = Path(file_location+"_tagging.csv").is_file()
-    # TODO: Add in path to train and export_inference (TF_path?)
     with open(file_location+"_new.csv", 'w', newline='') as untagged, open(file_location+"_tagging.csv", 'a', newline='') as tagging:
         untagged_writer, tagging_writer = csv.writer(untagged), csv.writer(tagging)
         untagged_writer.writerow(header)
@@ -103,8 +109,8 @@ def get_top_rows(file_location, num_rows, user_folders):
             (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
     return top_rows
 
-def create_vott_json(file_location, num_rows, user_folders, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"]):
-    all_files = get_top_rows(file_location, num_rows, user_folders)
+def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"]):
+    all_files = get_top_rows(file_location, num_rows, user_folders, pick_max)
     make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, tag_names=tag_names,
     tag_colors=['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for 
             r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]])
@@ -115,9 +121,9 @@ if __name__ == "__main__":
     import time
     from azure.storage.blob import BlockBlobService
     import sys
-    import os    
+    import os
     # Allow us to import utils
-    config_dir = str(Path(os.getcwd()).parent / "utils")
+    config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
     from config import Config
@@ -132,8 +138,7 @@ if __name__ == "__main__":
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "totag_tagging.csv")
-    #TODO: PARSE 20 + CONFIG FILE from USER ARGS
-    create_vott_json("totag", int(sys.argv[1]), config_file["user_folders"], "", config_file["tagging_location"], 
+    create_vott_json("totag", int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
                 blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","))
     container_name = config_file["label_container_name"]
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), "totag_tagging.csv")
