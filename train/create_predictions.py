@@ -21,25 +21,25 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
         tagged_writer = csv.writer(tagged_file)
         untagged_writer = csv.writer(untagged_file)
         if user_folders:
-            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "confidence"])
-            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "confidence"])
+            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "box_confidence", "image_confidence"])
+            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "box_confidence", "image_confidence"])
         else:
-            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","confidence"])
-            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","confidence"])
+            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"])
+            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"])
         if user_folders:
             for (folder, name), predictions, (height, width) in zip(all_names, all_predictions, all_sizes):
                 if not predictions:
                     predictions = [[0,"NULL",0,0,0,0]]
                 confidence = calculate_confidence(predictions)
                 for prediction in predictions:
-                    (tagged_writer if name in file_set[folder] else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,folder,confidence])
+                    (tagged_writer if name in file_set[folder] else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,folder,prediction[0], confidence])
         else:
             for name, predictions, (height,width) in zip(all_names, all_predictions, all_sizes):
                 if not predictions:
                     predictions = [[0,"NULL",0,0,0,0]]
                 confidence = calculate_confidence(predictions)
                 for prediction in predictions:
-                    (tagged_writer if name in file_set else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,confidence])
+                    (tagged_writer if name in file_set else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,prediction[0], confidence])
 
 def get_suggestions(detector, basedir: str, untagged_output: str, 
     tagged_output: str, cur_tagged: str, cur_tagging: str, min_confidence: float =.2,

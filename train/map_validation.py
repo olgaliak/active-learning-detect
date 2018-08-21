@@ -11,6 +11,29 @@ CLASS_LOCATION=1
 PREDS_START=2
 PREDS_END=5
 BOX_CONFIDENCE_LOCATION=-2
+
+def get_results(ground_arr, detector_arr, min_iou=.5):
+    # Sort detector arr in descending confidence
+    detector_arr = detector_arr[detector_arr[:,-1].argsort()[::-1]]
+    det_x_min, det_x_max, det_y_min, det_y_max, _ = detector_arr.transpose()
+    ground_x_min, ground_x_max, ground_y_min, ground_y_max = ground_arr.transpose()
+    # Clip negative since negative implies no overlap
+    intersect_widths = (np.minimum(det_x_max[:, np.newaxis], ground_x_max) - np.maximum(det_x_min[:, np.newaxis], ground_x_min)).clip(min=0)
+    intersect_heights = (np.minimum(det_y_max[:, np.newaxis], ground_y_max) - np.maximum(det_y_min[:, np.newaxis], ground_y_min)).clip(min=0)
+    intersect_areas = intersect_widths*intersect_heights
+    # Inclusion exclusion principle!
+    union_areas = ((det_x_max-det_x_min)*(det_y_max-det_y_min))[:, np.newaxis] + ((ground_x_max-ground_x_min)*(ground_y_max-ground_y_min)) - intersect_areas
+    # Just in case a ground truth has zero area
+    iou = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
+    num_gtruths = ground_arr.shape[0]
+    num_detections = detector_arr.shape[0]
+    best_gtruths = np.argmax(iou, axis=1)
+    valid_gtruths = iou[np.arange(num_detections), best_gtruths]>min_iou
+    num_true_positives = np.count_nonzero(np.bincount(best_gtruths[valid_gtruths]))
+    num_false_positives = num_detections - detected_gtruths
+    num_false_negatives = num_gtruths - detected_gtruths
+    return num_true_positives, num_false_positives, num_false_negatives
+
 def detectortest(predictions, ground_truths, output, user_folders):
     '''Inputs test_detector that follows the Detector ABC, images which is
     a list of image filenames, image_size which is the resized image size
@@ -44,16 +67,8 @@ def detectortest(predictions, ground_truths, output, user_folders):
         file_precisions = []
         file_recalls = []
         for classname, ground_preds in all_gtruths[filename].items():
-            ground_truth = np.zeros((HEIGHT, WIDTH))
-            for xmin,xmax,ymin,ymax in map(partial(map, float), ground_preds):
-                ground_truth[int(ymin*HEIGHT):int(ymax*HEIGHT), int(xmin*WIDTH):int(xmax*WIDTH)] = 1
-            det_preds = all_detector_preds[filename][classname]
-            detection = np.zeros((HEIGHT, WIDTH))
-            for xmin,xmax,ymin,ymax in map(partial(map, float), det_preds):
-                detection[int(ymin*HEIGHT):int(ymax*HEIGHT), int(xmin*WIDTH):int(xmax*WIDTH)] = 1
-            ground_area = ground_truth.sum()
-            detect_area = detection.sum()
-            inter_area = (ground_truth * detection).sum()
+            true_pos, false_pos, false_neg = get_results(np.asarray(ground_preds, dtype=np.float64), np.asarray(all_detector_preds[filename][classname], dtype=np.float64))
+            
             precision = inter_area / detect_area if detect_area!=0 else 1
             recall = inter_area / ground_area
             file_precisions.append(precision)
