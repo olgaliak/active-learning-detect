@@ -23,8 +23,8 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     for ground_arr, detector_arr in zipped_data_arr:
         detector_arr = np.asarray(detector_arr, dtype=np.float64)
         ground_arr = np.asarray(ground_arr, dtype=np.float64)
-        # Sort by descending confidence
-        detector_arr = detector_arr[detector_arr[:,-1].argsort()[::-1]]
+        # Sort by descending confidence, use mergesort to match COCO evaluation
+        detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         ground_x_min, ground_x_max, ground_y_min, ground_y_max = ground_arr.transpose()
         # Clip negative since negative implies no overlap
@@ -69,7 +69,7 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     true_positives = np.zeros((num_total_detections, len(min_ious)), dtype=bool)
     true_positives[all_correct_preds] = True
     # Mergesort is chosen to be consistent with coco/matlab results
-    sort_order = np.argsort(all_confs, kind='mergesort')[::-1]
+    sort_order = all_confs.argsort(kind='mergesort')[::-1]
     true_positives = true_positives[:,sort_order]
     # Keeps track of number of true positives until each given point
     all_true_positives = np.cumsum(true_positives, axis=1)
