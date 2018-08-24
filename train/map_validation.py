@@ -21,11 +21,20 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     num_total_detections = 0
     num_total_gtruths = 0
     for ground_arr, detector_arr in zipped_data_arr:
+        num_gtruths = len(ground_arr)
+        num_detections = len(detector_arr)
+        if not detector_arr:
+            num_total_gtruths+=num_gtruths
+            continue
         detector_arr = np.asarray(detector_arr, dtype=np.float64)
-        ground_arr = np.asarray(ground_arr, dtype=np.float64)
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        if not ground_arr:
+            num_total_detections+=num_detections
+            all_confs.append(confs)
+            continue
+        ground_arr = np.asarray(ground_arr, dtype=np.float64)
         ground_x_min, ground_x_max, ground_y_min, ground_y_max = ground_arr.transpose()
         # Clip negative since negative implies no overlap
         intersect_widths = (np.minimum(det_x_max[:, np.newaxis], ground_x_max) - np.maximum(det_x_min[:, np.newaxis], ground_x_min)).clip(min=0)
@@ -35,12 +44,10 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         union_areas = ((det_x_max-det_x_min)*(det_y_max-det_y_min))[:, np.newaxis] + ((ground_x_max-ground_x_min)*(ground_y_max-ground_y_min)) - intersect_areas
         # Just in case a ground truth has zero area
         iou = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
-        num_gtruths = ground_arr.shape[0]
-        num_detections = detector_arr.shape[0]
         # Defined best ground truth as one with highest IOU
         best_gtruths = np.argmax(iou, axis=1)
         # Check that IOU is greater than min_IOU for all possible min_IOUs
-        valid_preds = np.nonzero(iou[np.arange(num_detections), best_gtruths]>min_ious[:, np.newaxis])
+        valid_preds = map(np.nonzero, iou[np.arange(num_detections), best_gtruths]>min_ious[:, np.newaxis])
         ## Useful for standard precision/recall metrics
         # num_true_positives = np.count_nonzero(np.bincount(best_gtruths[valid_preds]))
         # num_false_positives = num_detections - detected_gtruths
@@ -52,29 +59,29 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # prediction for each ground truth to be a true positive, rest are false positives)
         # Note that pandas unique_label_indices is equivalent to np.unique(labels, return_index=True)[1] but
         # is considerably faster due to using a hashtable instead of sorting
-        correct_preds = unique_label_indices(best_gtruths[valid_preds])
         # Finds original indices of correct predictions
-        correct_preds = valid_preds[correct_preds]
         # Increments each index by the number of previous detections to map it to the correct index once
         # all the detections for each class are concatenated together
-        correct_preds += num_total_detections
+        correct_preds = [valid_pred[0][unique_label_indices(best_gtruths[valid_pred[0]])]+num_total_detections for valid_pred in valid_preds]
         all_correct_preds.append(correct_preds)
         all_confs.append(confs)
         num_total_detections += num_detections
         num_total_gtruths += num_gtruths
     # Concatenates all predictions and confidences together to find class MAP
     all_confs = np.concatenate(all_confs)
-    all_correct_preds = np.concatenate(all_correct_preds, axis=1)
-    # Sets only correct prediction indices to true, rest to false
-    true_positives = np.zeros((num_total_detections, len(min_ious)), dtype=bool)
-    true_positives[all_correct_preds] = True
+    all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
+    # Sets only correct prediction indices to true, rest to false.
+    true_positives = np.zeros((len(min_ious), num_total_detections), dtype=bool)
+    for iou_index, positive_locs in enumerate(all_correct_preds):
+        true_positives[iou_index][positive_locs]=True
     # Mergesort is chosen to be consistent with coco/matlab results
     sort_order = all_confs.argsort(kind='mergesort')[::-1]
     true_positives = true_positives[:,sort_order]
     # Keeps track of number of true positives until each given point
     all_true_positives = np.cumsum(true_positives, axis=1)
     # In python >=3 this is equivalent to np.true_divide
-    precision = all_true_positives / np.arange(1, num_total_detections+1)
+    precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
+    precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
     # Makes each element in precision list max of all elements to right
     precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
     recall = all_true_positives / num_total_gtruths
@@ -120,11 +127,11 @@ def detectortest(predictions, ground_truths, output, user_folders):
         all_class_maps[classname] = class_map
     # Calculates average over all classes. This is the mAP for the test set.
     avg_map = sum(all_class_maps.values())/len(all_class_maps) if all_class_maps else 0 
-    print('Class Name: Average, Error: {}'.format(avg_map))
-    print('\n'.join('Class Name: {}, Error: {}'.format(*classdata) for classdata in all_class_maps.items()))
+    print('Class Name: Average, AP: {}'.format(avg_map))
+    print('\n'.join('Class Name: {}, AP: {}'.format(*classdata) for classdata in all_class_maps.items()))
     with open(output, 'w') as out_file:
         csv_writer=csv.writer(out_file)
-        csv_writer.writerow(['Class Name','Error'])
+        csv_writer.writerow(['Class Name','AP'])
         csv_writer.writerow(['Average', avg_map])
         for classdata in all_class_maps.items():
             csv_writer.writerow(classdata)

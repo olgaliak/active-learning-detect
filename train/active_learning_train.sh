@@ -45,7 +45,7 @@ python ${tf_location}/export_inference_graph.py --input_type "image_tensor" --pi
 echo "Creating new predictions"
 python ${python_file_directory}/create_predictions.py cur_config.ini
 echo "Calculating performance"
-python ${python_file_directory}/validation.py cur_config.ini
+python ${python_file_directory}/map_validation.py cur_config.ini
 # Rename predictions and inference graph based on timestamp and upload
 echo "Uploading new data"
 az storage blob upload --container-name activelearninglabels --file ${inference_output_dir}/frozen_inference_graph.pb --name model_$(date +%s).pb  --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
