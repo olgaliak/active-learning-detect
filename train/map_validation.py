@@ -44,24 +44,30 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         union_areas = ((det_x_max-det_x_min)*(det_y_max-det_y_min))[:, np.newaxis] + ((ground_x_max-ground_x_min)*(ground_y_max-ground_y_min)) - intersect_areas
         # Just in case a ground truth has zero area
         iou = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
-        # Defined best ground truth as one with highest IOU
+        # Defined best ground truth as one with highest IOU. This is an array of size num_detections, where
+        # best_gtruths[i] is the index of the ground truth to which prediction i is most similar (highest IOU)
         best_gtruths = np.argmax(iou, axis=1)
-        # Check that IOU is greater than min_IOU for all possible min_IOUs
+        # valid_preds is a generator where each element is a numpy int array. Each numpy array corresponds to
+        # a min_iou in the min_ious array, and has indices corresponding to the predictions whose
+        # prediction-ground truth pairs have IOU greater than that min_iou.
         valid_preds = map(np.nonzero, iou[np.arange(num_detections), best_gtruths]>min_ious[:, np.newaxis])
+        #
         ## Useful for standard precision/recall metrics
         # num_true_positives = np.count_nonzero(np.bincount(best_gtruths[valid_preds]))
         # num_false_positives = num_detections - detected_gtruths
         # num_false_negatives = num_gtruths - detected_gtruths
         #
-        # Uses pandas unique_label_indices to get leftmost index of each unique value in best_gtruths[valid_preds]
-        # This is equivalent to finding the index of the highest confidence prediction box for each ground truth
-        # which in turn is equivalent to finding the true positives (since we only consider the highest confidence
-        # prediction for each ground truth to be a true positive, rest are false positives)
+        # best_gtruths[valid_preds] uses the previously calculated valid_preds array to return an array 
+        # containing the ground truths indices for each prediction whenever the ground truth-prediction
+        # IOU was greater than min_iou. Then unique_label_indices is used to find the leftmost occuring
+        # ground truth index for each ground truth index, which corresponds to finding the true positives
+        # (since we only consider the highest confidence prediction for each ground truth to be a true
+        # positive, rest are false positives)
         # Note that pandas unique_label_indices is equivalent to np.unique(labels, return_index=True)[1] but
         # is considerably faster due to using a hashtable instead of sorting
-        # Finds original indices of correct predictions
-        # Increments each index by the number of previous detections to map it to the correct index once
-        # all the detections for each class are concatenated together
+        # Once the indices of the true positive predictions are found in the smaller array containing only
+        # predictions with IOU > min_iou, they are converted back into indices for the original array
+        # using valid_pred.
         correct_preds = [valid_pred[0][unique_label_indices(best_gtruths[valid_pred[0]])]+num_total_detections for valid_pred in valid_preds]
         all_correct_preds.append(correct_preds)
         all_confs.append(confs)
@@ -71,7 +77,7 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     all_confs = np.concatenate(all_confs)
     all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
     # Sets only correct prediction indices to true, rest to false.
-    true_positives = np.zeros((len(min_ious), num_total_detections), dtype=bool)
+    true_positives = np.zeros((len(m54in_ious), num_total_detections), dtype=bool)
     for iou_index, positive_locs in enumerate(all_correct_preds):
         true_positives[iou_index][positive_locs]=True
     # Mergesort is chosen to be consistent with coco/matlab results
