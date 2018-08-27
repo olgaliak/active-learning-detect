@@ -7,13 +7,18 @@ from pathlib import Path
 import shutil
 import random
 import colorsys
+import numpy as np
 
 CONFIDENCE_LOCATION = -1
+TAG_CONFIDENCE_LOCATION = -2
 FILENAME_LOCATION = 0
 FOLDER_LOCATION = 8
+TAG_LOCATION = 1
 
 def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
-        tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010"):
+        tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_image=None):
+    if max_tags_per_image is not None:
+        max_tags_per_image = int(max_tags_per_image)
     folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
     output_location = str(Path(output_location)/folder_name)
     using_blob_storage = blob_credentials is not None
@@ -44,17 +49,35 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
     for i, predictions in enumerate(all_predictions):
         all_frames = []
         set_predictions = defaultdict(list)
-        for prediction in predictions:
-            set_predictions[tuple(map(float,prediction[2:8]))].append(prediction[1])
+        if max_tags_per_image is None:
+            for prediction in predictions:
+                x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
+                x_1 = int(x_1*width)
+                x_2 = int(x_2*width)
+                y_1 = int(y_1*height)
+                y_2 = int(y_2*height)
+                set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+        else:
+            if predictions:
+                num_tags = np.zeros((int(predictions[0][6]),int(predictions[0][7])), dtype=int)
+                for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
+                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
+                    x_1 = int(x_1*width)
+                    x_2 = int(x_2*width)
+                    y_1 = int(y_1*height)
+                    y_2 = int(y_2*height)
+                    if np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_image:
+                        num_tags[y_1:y_2, x_1:x_2]+=1
+                        set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
         for j,(coordinates, tags) in enumerate(set_predictions.items(), 1):
             # filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory
             x_1, x_2, y_1, y_2, height, width = coordinates
             if tags!=["NULL"] and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                 curframe = {}
-                curframe["x1"] = int(x_1*width)
-                curframe["y1"] = int(y_1*height)
-                curframe["x2"] = int(x_2*width)
-                curframe["y2"] = int(y_2*height)
+                curframe["x1"] = x_1
+                curframe["y1"] = y_1
+                curframe["x2"] = x_2
+                curframe["y2"] = y_2
                 curframe["id"] = j
                 curframe["width"] = width
                 curframe["height"] = height
@@ -109,11 +132,11 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max):
             (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
     return top_rows
 
-def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"]):
+def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"], max_tags_per_image=None):
     all_files = get_top_rows(file_location, num_rows, user_folders, pick_max)
     make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, tag_names=tag_names,
     tag_colors=['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for 
-            r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]])
+            r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]], max_tags_per_image=max_tags_per_image)
 
 if __name__ == "__main__":
     #create_vott_json(r"C:\Users\t-yapand\Desktop\GAUCC1_1533070087147.csv",20, True, r"C:\Users\t-yapand\Desktop\GAUCC", r"C:\Users\t-yapand\Desktop\Output\GAUCC")
@@ -139,7 +162,7 @@ if __name__ == "__main__":
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "totag_tagging.csv")
     create_vott_json("totag", int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
-                blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","))
+                blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","), max_tags_per_image=config_file.get("max_tags_per_image",None))
     container_name = config_file["label_container_name"]
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), "totag_tagging.csv")
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), "totag_new.csv")
