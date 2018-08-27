@@ -97,13 +97,19 @@ Now model can be trained.
 
 ### Model(re)training on Linux box
 Before your first time running the model, and at any later time if you would like to repartition the test set, run:
-`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini
+
+`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini`
+
 This script will take all the tagged data and split some of it into a test set, which will not be trained/validated on and will then be use by evalution code to return mAP values.
+
 Run bash script:  
-`~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`  
+`~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`
+
 This script will kick of training based on available labeled data.  
-Model will evaluated on dynamic validation set and perf numbers will be saved in blob storage (performance.csv).
-Latest totag.csv will have predictions for all available images made of the newly trained model -- boundding box locations that could be used by human annotator as a starter.
+
+Model will evaluated on test set and perf numbers will be saved in blob storage (performance.csv).
+
+Latest totag.csv will have predictions for all available images made of the newly trained model -- bounding box locations that could be used by human annotator as a starter.
 
 ### Reviewing of pre-labeled results (on Tagger machine)
 Human annotator(s) deletes any leftovers from previous predictions (csv files in active-learning-detect\tag, image dirs) and runs goes again sequence of:
