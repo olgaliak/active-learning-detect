@@ -77,7 +77,7 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     all_confs = np.concatenate(all_confs)
     all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
     # Sets only correct prediction indices to true, rest to false.
-    true_positives = np.zeros((len(m54in_ious), num_total_detections), dtype=bool)
+    true_positives = np.zeros((len(min_ious), num_total_detections), dtype=bool)
     for iou_index, positive_locs in enumerate(all_correct_preds):
         true_positives[iou_index][positive_locs]=True
     # Mergesort is chosen to be consistent with coco/matlab results
