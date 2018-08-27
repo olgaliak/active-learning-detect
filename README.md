@@ -96,6 +96,9 @@ Tagging_abc.csv will contain list of files that are "work in progress" -- the on
 Now model can be trained.
 
 ### Model(re)training on Linux box
+Before your first time running the model, and at any later time if you would like to repartition the test set, run:
+`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini
+This script will take all the tagged data and split some of it into a test set, which will not be trained/validated on and will then be use by evalution code to return mAP values.
 Run bash script:  
 `~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`  
 This script will kick of training based on available labeled data.  
