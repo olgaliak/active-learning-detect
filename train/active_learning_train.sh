@@ -50,4 +50,4 @@ python ${python_file_directory}/map_validation.py cur_config.ini
 echo "Uploading new data"
 az storage blob upload --container-name activelearninglabels --file ${inference_output_dir}/frozen_inference_graph.pb --name model_$(date +%s).pb  --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
 az storage blob upload --container-name activelearninglabels --file $untagged_output --name totag_$(date +%s).csv --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
-az storage blob upload --container-name activelearninglabels --file $validation_output --name performance_$(date +%s).txt --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
+az storage blob upload --container-name activelearninglabels --file $validation_output --name performance_$(date +%s).csv --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
