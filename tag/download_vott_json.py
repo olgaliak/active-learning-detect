@@ -52,7 +52,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         if max_tags_per_pixel is None:
             for prediction in predictions:
                 x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
-                if prediction[TAG_LOCATION]!=["NULL"] and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
+                if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                     x_1 = int(x_1*width)
                     x_2 = int(x_2*width)
                     y_1 = int(y_1*height)
@@ -63,7 +63,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
                 num_tags = np.zeros((int(predictions[0][6]),int(predictions[0][7])), dtype=int)
                 for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
                     x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
-                    if prediction[TAG_LOCATION]!=["NULL"] and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
+                    if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                         x_1 = int(x_1*width)
                         x_2 = int(x_2*width)
                         y_1 = int(y_1*height)
