@@ -24,6 +24,8 @@ These are variables that must be set (along with azure storage information and i
 This is the folder where all images will be downloaded and the VOTT .json file will be created. Please ensure that this folder is empty so that there are no conflicts while downloading/uploading. The folder will be created automatically if it does not exist.
 - pick_max:
 This determines whether the images with lowest or highest confidence are chosen to be labelled. Only set it to True if you wish to evaluate images where your model is very confident to ensure that it is not learning incorrect patterns with high confidence. Otherwise, keep it at the default value of False.
+- max_tags_per_pixel:
+This limits the number of tags per pixel, preventing too many duplicate tags.
 ## Training Machine
 These are variables that must be set (along with azure storage information and image information) on the config.ini file for the training machine. They are not needed on a tagging machine.
 ### Locations
