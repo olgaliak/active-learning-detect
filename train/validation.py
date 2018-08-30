@@ -10,6 +10,7 @@ FOLDER_LOCATION=8
 CLASS_LOCATION=1
 PREDS_START=2
 PREDS_END=5
+BOX_CONFIDENCE_LOCATION=-2
 def detectortest(predictions, ground_truths, output, user_folders):
     '''Inputs test_detector that follows the Detector ABC, images which is
     a list of image filenames, image_size which is the resized image size
@@ -23,10 +24,10 @@ def detectortest(predictions, ground_truths, output, user_folders):
         next(reader, None)
         if user_folders:
             for row in reader:
-                all_detector_preds[(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][row[CLASS_LOCATION]].append(row[PREDS_START:PREDS_END+1])
+                all_detector_preds[(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][row[CLASS_LOCATION]].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
         else:
             for row in reader:
-                all_detector_preds[row[FILENAME_LOCATION]][row[CLASS_LOCATION]].append(row[PREDS_START:PREDS_END+1])
+                all_detector_preds[row[FILENAME_LOCATION]][row[CLASS_LOCATION]].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
     all_gtruths = defaultdict(lambda: defaultdict(list))
     with open(ground_truths, 'r') as truths_file:
         reader = csv.reader(truths_file)

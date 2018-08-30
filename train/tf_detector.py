@@ -20,7 +20,6 @@ class TFDetector():
     
     def predict(self, images_data, batch_size=10, min_confidence=.7):
         '''Predict results from list of images to list of boxes'''
-        images_data = np.asarray(images_data)
         with self.detection_graph.as_default():
             with tf.Session() as sess:
                 ops = tf.get_default_graph().get_operations()

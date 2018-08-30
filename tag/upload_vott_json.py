@@ -34,8 +34,8 @@ def select_jsons(image_directory, user_folders, file_location):
             reader = csv.reader(file)
             header = next(reader)
             tagging_list = list(reader)
-    # TODO: CHANGE FOLDER
-    # TODO: CHECK THAT THE HEADER SHIT WORKS IF EVERYTHING IS DELETED
+        # TODO: CHANGE FOLDER
+        # TODO: CHECK THAT THE HEADER SHIT WORKS IF EVERYTHING IS DELETED
         file_exists = Path(file_location+".csv").is_file()
         tagged = set()
         with open(file_location+".csv", 'a', newline='') as csv_file:
