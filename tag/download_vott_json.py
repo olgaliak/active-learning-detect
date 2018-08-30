@@ -13,7 +13,12 @@ CONFIDENCE_LOCATION = -1
 TAG_CONFIDENCE_LOCATION = -2
 FILENAME_LOCATION = 0
 FOLDER_LOCATION = 8
+HEIGHT_LOCATION = 6
+WIDTH_LOCATION = 7
 TAG_LOCATION = 1
+TAG_STARTING_LOCATION = 2
+# Should be equal to width_location
+TAG_ENDING_LOCATION = 7
 
 def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
@@ -51,7 +56,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         set_predictions = defaultdict(list)
         if max_tags_per_pixel is None:
             for prediction in predictions:
-                x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
+                x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
                 if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                     x_1 = int(x_1*width)
                     x_2 = int(x_2*width)
@@ -60,9 +65,9 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
                     set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
         else:
             if predictions:
-                num_tags = np.zeros((int(predictions[0][6]),int(predictions[0][7])), dtype=int)
+                num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
                 for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
-                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[2:8])
+                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
                     if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                         x_1 = int(x_1*width)
                         x_2 = int(x_2*width)
@@ -135,6 +140,8 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max):
 
 def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"], max_tags_per_pixel=None):
     all_files = get_top_rows(file_location, num_rows, user_folders, pick_max)
+    # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
+    # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
     make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, tag_names=tag_names,
     tag_colors=['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for 
             r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]], max_tags_per_pixel=max_tags_per_pixel)
