@@ -5,7 +5,9 @@ import json
 import cv2
 import csv
 from collections import defaultdict
+import numpy as np
 
+NUM_CHANNELS=3
 FOLDER_LOCATION=8
 
 def calculate_confidence(predictions):
@@ -43,7 +45,7 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
 
 def get_suggestions(detector, basedir: str, untagged_output: str, 
     tagged_output: str, cur_tagged: str, cur_tagging: str, min_confidence: float =.2,
-    image_size: Tuple=(1200,1550), filetype: str="*.jpg", minibatchsize: int=50,
+    image_size: Tuple=(1000,750), filetype: str="*.jpg", minibatchsize: int=50,
     user_folders: bool=True):
     '''Gets suggestions from a given detector and uses them to generate VOTT tags
     
@@ -74,15 +76,18 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
             already_tagged[row[FOLDER_LOCATION]].add(row[0])
         subdirs = [subfile for subfile in basedir.iterdir() if subfile.is_dir()]
         all_names = []
+        all_image_files = [] 
         all_sizes = []
-        all_images = []
         for subdir in subdirs:
             cur_image_names = list(subdir.rglob(filetype))
-            cur_images = [cv2.imread(str(image_name), CV2_COLOR_LOAD_FLAG) for image_name in cur_image_names]
-            all_sizes += [image.shape[:2] for image in cur_images]
-            all_images += [cv2.resize(cv2_image, image_size) for cv2_image in cur_images]
+            all_image_files += [str(image_name) for image_name in cur_image_names]
             foldername = subdir.stem
             all_names += [(foldername, filename.name) for filename in cur_image_names]
+        # Reversed because numpy is row-major
+        all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
+        all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
+        for curindex, image in enumerate(all_image_files):
+            all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
         all_predictions = detector.predict(all_images, min_confidence=min_confidence)
     else:
         with open(cur_tagged, 'r') as file:
@@ -93,11 +98,12 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
             reader = csv.reader(file)
             next(reader, None)
             already_tagged |= {row[0] for row in reader}
-        all_names = list(basedir.rglob(filetype))
-        all_images = [cv2.imread(str(image_name), CV2_COLOR_LOAD_FLAG) for image_name in all_names]
-        all_sizes = [image.shape[:2] for image in all_images]
-        all_images = [cv2.resize(cv2_image, image_size) for cv2_image in all_images]
-        all_names = [filename.name for filename in all_names]
+        all_image_files = list(basedir.rglob(filetype))
+        all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
+        all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
+        for curindex, image in enumerate(all_image_files):
+            all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
+        all_names = [filename.name for filename in all_image_files]
         all_predictions = detector.predict(all_images, min_confidence=min_confidence)
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
 
