@@ -12,34 +12,20 @@ def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3
 
         for string_record in record_iterator:
             
-            # example = tf.train.Example()
-            # example.ParseFromString(string_record)
-            features = tf.parse_single_example(
-                string_record,
-                features={
-                    'image/height': tf.FixedLenFeature([], tf.int64),
-                    'image/width': tf.FixedLenFeature([], tf.int64),
-                    #'depth': tf.FixedLenFeature([], tf.int64),
-                    'image/encoded': tf.FixedLenFeature([], tf.string)
-            })
-            height = features['image/height']
-            width = features['image/width']
-
-            image = tf.decode_raw(features['image/encoded'], tf.uint8)
-
-            reconstructed_img = tf.reshape(image, (height, width, -1))
-
-            # height = int(example.features.feature['image/height']
-            #                             .int64_list
-            #                             .value[0])
+            example = tf.train.Example()
+            example.ParseFromString(string_record)
             
-            # width = int(example.features.feature['image/width']
-            #                             .int64_list
-            #                             .value[0])
+            height = int(example.features.feature['image/height']
+                                        .int64_list
+                                        .value[0])
             
-            # img_string = (example.features.feature['image/encoded']
-            #                             .bytes_list
-            #                             .value[0])
+            width = int(example.features.feature['image/width']
+                                        .int64_list
+                                        .value[0])
+            
+            img_string = (example.features.feature['image/encoded']
+                                        .bytes_list
+                                        .value[0])
 
             # img_string = (example.features.feature['image_raw']
             #                             .bytes_list
@@ -49,8 +35,8 @@ def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3
             #                             .bytes_list
             #                             .value[0])
             
-            # img_1d = np.fromstring(img_string, dtype=np.uint8)
-            # reconstructed_img = img_1d.reshape((height, width, -1))
+            img_1d = np.fromstring(img_string, dtype=np.uint8)
+            reconstructed_img = img_1d.reshape((height, width, -1))
             
             # annotation_1d = np.fromstring(annotation_string, dtype=np.uint8)
             
