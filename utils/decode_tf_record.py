@@ -1,11 +1,15 @@
 import numpy as np
 import tensorflow as tf
+from pathlib import Path
+def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3]):
+    record_file = Path(record_file)
 
-def decode_record(filename):
-    
+    for name, filenames in zip(split_names, split_preds):
+        writer = tf.python_io.TFRecordWriter()
+
         reconstructed_images = []
 
-        record_iterator = tf.python_io.tf_record_iterator(path=filename)
+        record_iterator = tf.python_io.tf_record_iterator("{}_{}".format(record_file.with_suffix(''), name) + record_file.suffix)
 
         for string_record in record_iterator:
             
