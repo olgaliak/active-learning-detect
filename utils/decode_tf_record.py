@@ -5,7 +5,6 @@ def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3
     record_file = Path(record_file)
 
     for name in split_names:
-        writer = tf.python_io.TFRecordWriter()
 
         reconstructed_images = []
 
@@ -25,10 +24,6 @@ def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3
                                         .value[0])
             
             img_string = (example.features.feature['image/encoded']
-                                        .bytes_list
-                                        .value[0])
-
-            img_string = (example.features.feature['image_raw']
                                         .bytes_list
                                         .value[0])
 
