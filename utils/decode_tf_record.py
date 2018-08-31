@@ -4,7 +4,7 @@ from pathlib import Path
 def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3]):
     record_file = Path(record_file)
 
-    for name, filenames in zip(split_names, split_preds):
+    for name in split_names:
         writer = tf.python_io.TFRecordWriter()
 
         reconstructed_images = []
@@ -50,6 +50,7 @@ def decode_record(record_file, split_names=["train","val"], split_percent=[.7,.3
             
             #reconstructed_images.append((reconstructed_img, reconstructed_annotation))
             reconstructed_images.append(reconstructed_img)
+        print(len(reconstructed_images))
 if __name__ == "__main__":
     import sys
     config_dir = str(Path.cwd().parent / "utils")
