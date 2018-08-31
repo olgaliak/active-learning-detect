@@ -21,6 +21,7 @@ def decode_record(record_file, output_folder):
         cv2_image = cv2.imdecode(img_raw, cv2.IMREAD_COLOR)
         cv2.imwrite(str(output_folder/filename),cv2_image)
 if __name__ == "__main__":
+    import sys
     if len(sys.argv)<3:
         raise ValueError("Need to specify input file and output folder")
     input_file = sys.argv[1]
