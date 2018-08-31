@@ -10,21 +10,13 @@ def decode_record(record_file, output_folder):
         example = tf.train.Example()
         example.ParseFromString(string_record)
             
-        filename = example.features.feature['image/filename']
-                                   .bytes_list
-                                   .value[0].decode("utf-8")
+        filename = example.features.feature['image/filename'].bytes_list.value[0].decode("utf-8")
 
-        height = int(example.features.feature['image/height']
-                                    .int64_list
-                                    .value[0])
+        height = int(example.features.feature['image/height'].int64_list.value[0])
           
-        width = int(example.features.feature['image/width']
-                                    .int64_list
-                                    .value[0])
+        width = int(example.features.feature['image/width'].int64_list.value[0])
          
-        img_raw = (example.features.feature['image/encoded']
-                                    .bytes_list
-                                    .value[0])
+        img_raw = (example.features.feature['image/encoded'].bytes_list.value[0])
         img_raw = np.fromstring(img_raw, dtype=np.uint8)
         cv2_image = cv2.imdecode(img_raw, cv2.IMREAD_COLOR)
         cv2.imwrite(str(output_folder/filename),cv2_image)
