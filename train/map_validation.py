@@ -14,7 +14,7 @@ PREDS_END=5
 BOX_CONFIDENCE_LOCATION=-2
 
 def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpoint=True),
-            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True)):
+            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True), nms_iou=.5):
     # Used linspace over arange for min_ious/avg_recalls due to issues with endpoints
     all_confs = []
     all_correct_preds = []
@@ -22,7 +22,6 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     num_total_gtruths = 0
     for ground_arr, detector_arr in zipped_data_arr:
         num_gtruths = len(ground_arr)
-        num_detections = len(detector_arr)
         if not detector_arr:
             num_total_gtruths+=num_gtruths
             continue
@@ -30,6 +29,32 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        indices_to_keep = np.zeros(len(det_x_min), dtype=bool)
+        num_elements_kept = 0
+        cur_indices_to_keep = indices_to_keep[num_elements_kept:]
+        # Repeat until no detections left below overlap threshold
+        while np.any(cur_indices_to_keep):
+            # If only one bounding box is left we keep it
+            if len(cur_ious) <= 1:
+                cur_indices_to_keep = None
+                continue
+            cur_x_min = det_x_min[cur_indices_to_keep]
+            cur_x_max = det_x_max[cur_indices_to_keep]
+            cur_y_min = det_y_min[cur_indices_to_keep]
+            cur_y_max = det_y_max[cur_indices_to_keep]
+            intersect_widths = (np.minimum(cur_x_max[0], cur_x_max[1:]) - np.maximum(cur_x_min[0], cur_x_min[1:])).clip(min=0)
+            intersect_heights = (np.minimum(cur_y_max[0], cur_y_max[1:]) - np.maximum(cur_y_min[0], cur_y_min[1:])).clip(min=0)
+            intersect_areas = intersect_widths*intersect_heights
+            # Inclusion exclusion principle!
+            union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
+            # Just in case a ground truth has zero area
+            iou = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
+            cur_indices_to_keep = np.logical_and(cur_indices_to_keep, cur_ious < nms_iou, out=cur_indices_to_keep)
+            num_elements_kept += 1
+            cur_indices_to_keep = indices_to_keep[num_elements_kept:]
+        detector_arr = detector_arr[indices_to_keep]
+        det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        num_detections = len(detector_arr)
         if not ground_arr:
             num_total_detections+=num_detections
             all_confs.append(confs)
@@ -85,13 +110,6 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     true_positives = true_positives[:,sort_order]
     # Keeps track of number of true positives until each given point
     all_true_positives = np.cumsum(true_positives, axis=1)
-    # The extra zero is to deal with missing recalls
-    precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
-    # In python >=3 this is equivalent to np.true_divide
-    precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
-    # Makes each element in precision list max of all elements to right
-    precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
-    recall = all_true_positives / num_total_gtruths
     # PASCAL VOC 2012
     if avg_recalls is None:
         # Zero pad both sides to calculate area under curve
