@@ -178,7 +178,7 @@ def detectortest(predictions, ground_truths, output, user_folders):
                 all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
     all_class_maps = {}
     for classname, all_file_preds in all_boxes.items():
-        class_map = get_map_for_class(all_file_preds.values())
+        class_map = get_map_for_class(all_file_preds.values(), avg_recalls=None, min_ious=np.asarray([.5]))
         all_class_maps[classname] = class_map
     # Calculates average over all classes. This is the mAP for the test set.
     avg_map = sum(all_class_maps.values())/len(all_class_maps) if all_class_maps else 0 
