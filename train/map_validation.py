@@ -85,19 +85,50 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     true_positives = true_positives[:,sort_order]
     # Keeps track of number of true positives until each given point
     all_true_positives = np.cumsum(true_positives, axis=1)
-    # In python >=3 this is equivalent to np.true_divide
+    # The extra zero is to deal with missing recalls
     precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
+    # In python >=3 this is equivalent to np.true_divide
     precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
     # Makes each element in precision list max of all elements to right
     precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
     recall = all_true_positives / num_total_gtruths
-    # For each recall, finds leftmost index (i.e. largest precision) greater than it
-    indices_to_average = np.apply_along_axis(np.searchsorted, 1, recall, avg_recalls)
-    # Finds matching largest prediction for each recall and turns it into an array
-    precs_to_average = precision[np.arange(len(precision))[:,np.newaxis], indices_to_average]
-    # Returns average precision over each recall and over each IOU. Can specify an axis
-    # if separate average precision is wanted for each IOU (e.g. to do more precise statistics)
-    return np.mean(precs_to_average)
+    # PASCAL VOC 2012
+    if avg_recalls is None:
+        # Zero pad both sides to calculate area under curve
+        precision = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
+        # Pad one side with zeros and the other with ones for area under curve
+        recall = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
+        recall[:,-1] = np.ones(len(min_ious), dtype=np.float64)
+        # In python >=3 this is equivalent to np.true_divide
+        precision[:,1:-1] = all_true_positives / np.arange(1, num_total_detections+1)
+        # Makes each element in precision list max of all elements to right (ignores endpoints)
+        precision[:,1:-1] = np.maximum.accumulate(precision[:,-2:0:-1], axis=1)[:,::-1]
+        recall[:,1:-1] = all_true_positives / num_total_gtruths
+        # Calculate area under P-R curve for each IOU
+        # Should only be one IOU at .5 for PASCAL
+        all_areas = [] 
+        for cur_recall, cur_precision in zip(recall, precision):
+            # Find indices where value of recall changes
+            change_points = np.nonzero(cur_recall[1:]!=cur_recall[:-1])[0]
+            # Calculate sum of dw * dh as area and append to all areas
+            all_areas.append(np.sum((cur_recall[change_points+1] - cur_recall[change_points]) * cur_precision[change_points+1]))
+        return np.mean(all_areas)
+    # PASCAL VOC 2007
+    else:
+        # The extra zero is to deal with a recall larger than is achieved by model
+        precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
+        # In python >=3 this is equivalent to np.true_divide
+        precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
+        # Makes each element in precision list max of all elements to right (extra zero at right doesn't matter)
+        precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
+        recall = all_true_positives / num_total_gtruths
+        # For each recall, finds leftmost index (i.e. largest precision) greater than it
+        indices_to_average = np.apply_along_axis(np.searchsorted, 1, recall, avg_recalls)
+        # Finds matching largest prediction for each recall and turns it into an array
+        precs_to_average = precision[np.arange(len(precision))[:,np.newaxis], indices_to_average]
+        # Returns average precision over each recall and over each IOU. Can specify an axis
+        # if separate average precision is wanted for each IOU (e.g. to do more precise statistics)
+        return np.mean(precs_to_average)
 
 def detectortest(predictions, ground_truths, output, user_folders):
     '''Inputs test_detector that follows the Detector ABC, images which is
