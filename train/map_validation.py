@@ -29,16 +29,18 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
-        indices_to_keep = np.zeros(len(det_x_min), dtype=bool)
+        # This is numpy arrange
+        all_indices_to_keep = []
+        indices_to_keep = np.arange(len(det_x_min))
         num_elements_kept = 0
         cur_indices_to_keep = indices_to_keep[num_elements_kept:]
         # Repeat until no detections left below overlap threshold
         while np.any(cur_indices_to_keep):
+            cur_x_min = det_x_min[cur_indices_to_keep]
             # If only one bounding box is left we keep it
-            if len(cur_ious) <= 1:
+            if len(cur_x_min) <= 1:
                 cur_indices_to_keep = None
                 continue
-            cur_x_min = det_x_min[cur_indices_to_keep]
             cur_x_max = det_x_max[cur_indices_to_keep]
             cur_y_min = det_y_min[cur_indices_to_keep]
             cur_y_max = det_y_max[cur_indices_to_keep]
@@ -48,11 +50,14 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
             # Inclusion exclusion principle!
             union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
             # Just in case a ground truth has zero area
-            iou = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
-            cur_indices_to_keep = np.logical_and(cur_indices_to_keep, cur_ious < nms_iou, out=cur_indices_to_keep)
+            cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
+            # Add the element you were currently on
+            all_indices_to_keep.append(cur_indices_to_keep[0])
             num_elements_kept += 1
-            cur_indices_to_keep = indices_to_keep[num_elements_kept:]
-        detector_arr = detector_arr[indices_to_keep]
+            # Keep appending [0] to a list
+            # Just say cur_indices = np where cur_ious < nms_iou
+            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, np.nonzero(cur_ious < nms_iou)[0], assume_unique=True)
+        detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         num_detections = len(detector_arr)
         if not ground_arr:
@@ -98,6 +103,8 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         all_confs.append(confs)
         num_total_detections += num_detections
         num_total_gtruths += num_gtruths
+    print(num_total_detections)
+    print(num_total_gtruths)
     # Concatenates all predictions and confidences together to find class MAP
     all_confs = np.concatenate(all_confs)
     all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
@@ -118,6 +125,9 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         recall = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
         recall[:,-1] = np.ones(len(min_ious), dtype=np.float64)
         # In python >=3 this is equivalent to np.true_divide
+        np.set_printoptions(threshold=np.nan)
+        print(all_true_positives)
+        print(num_total_gtruths)
         precision[:,1:-1] = all_true_positives / np.arange(1, num_total_detections+1)
         # Makes each element in precision list max of all elements to right (ignores endpoints)
         precision[:,1:-1] = np.maximum.accumulate(precision[:,-2:0:-1], axis=1)[:,::-1]
