@@ -43,8 +43,13 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
             image_loc = image_loc/all_predictions[0][0][FOLDER_LOCATION]
     for prediction in all_predictions:
         if using_blob_storage:
-            print(image_loc + "/" + prediction[0][FILENAME_LOCATION])
-            blob_service.get_blob_to_path(container_name, image_loc + "/" + prediction[0][FILENAME_LOCATION],
+            if image_loc:
+                print(image_loc + "/" + prediction[0][FILENAME_LOCATION])
+                blob_service.get_blob_to_path(container_name, image_loc + "/" + prediction[0][FILENAME_LOCATION],
+                    str(output_location/prediction[0][FILENAME_LOCATION]))
+            else:
+                print(prediction[0][FILENAME_LOCATION])
+                blob_service.get_blob_to_path(container_name, prediction[0][FILENAME_LOCATION],
                     str(output_location/prediction[0][FILENAME_LOCATION]))
         else:
             shutil.copy(str(image_loc/prediction[0][FILENAME_LOCATION]), output_location)
