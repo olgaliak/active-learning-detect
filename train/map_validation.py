@@ -29,11 +29,10 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
-        # This is numpy arrange
+        # Code for NMS
         all_indices_to_keep = []
-        indices_to_keep = np.arange(len(det_x_min))
         num_elements_kept = 0
-        cur_indices_to_keep = indices_to_keep[num_elements_kept:]
+        cur_indices_to_keep = np.arange(len(det_x_min))
         # Repeat until no detections left below overlap threshold
         while np.any(cur_indices_to_keep):
             cur_x_min = det_x_min[cur_indices_to_keep]
@@ -56,10 +55,14 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
             num_elements_kept += 1
             # Keep appending [0] to a list
             # Just say cur_indices = np where cur_ious < nms_iou
-            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, np.nonzero(cur_ious < nms_iou)[0], assume_unique=True)
+            print(np.any(cur_ious>nms_iou))
+            print(cur_indices_to_keep)
+            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep[num_elements_kept:], cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
+            print(cur_indices_to_keep)
         detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         num_detections = len(detector_arr)
+        print(num_detections)
         if not ground_arr:
             num_total_detections+=num_detections
             all_confs.append(confs)
@@ -100,6 +103,7 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # using valid_pred.
         correct_preds = [valid_pred[0][unique_label_indices(best_gtruths[valid_pred[0]])]+num_total_detections for valid_pred in valid_preds]
         all_correct_preds.append(correct_preds)
+        print(correct_preds)
         all_confs.append(confs)
         num_total_detections += num_detections
         num_total_gtruths += num_gtruths
@@ -125,9 +129,6 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         recall = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
         recall[:,-1] = np.ones(len(min_ious), dtype=np.float64)
         # In python >=3 this is equivalent to np.true_divide
-        np.set_printoptions(threshold=np.nan)
-        print(all_true_positives)
-        print(num_total_gtruths)
         precision[:,1:-1] = all_true_positives / np.arange(1, num_total_detections+1)
         # Makes each element in precision list max of all elements to right (ignores endpoints)
         precision[:,1:-1] = np.maximum.accumulate(precision[:,-2:0:-1], axis=1)[:,::-1]
