@@ -14,7 +14,7 @@ PREDS_END=5
 BOX_CONFIDENCE_LOCATION=-2
 
 def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpoint=True),
-            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True), nms_iou=.5):
+            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True), nms_iou=.7):
     # Used linspace over arange for min_ious/avg_recalls due to issues with endpoints
     all_confs = []
     all_correct_preds = []
@@ -49,15 +49,11 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
             cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
             # Keep appending [0] to a list
             # Just say cur_indices = np where cur_ious < nms_iou
-            print(np.any(cur_ious>nms_iou))
-            print(cur_indices_to_keep)
             cur_indices_to_keep = cur_indices_to_keep[1:]
             cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
-            print(cur_indices_to_keep)
         detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         num_detections = len(detector_arr)
-        print(num_detections)
         if not ground_arr:
             num_total_detections+=num_detections
             all_confs.append(confs)
@@ -98,12 +94,9 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # using valid_pred.
         correct_preds = [valid_pred[0][unique_label_indices(best_gtruths[valid_pred[0]])]+num_total_detections for valid_pred in valid_preds]
         all_correct_preds.append(correct_preds)
-        print(correct_preds)
         all_confs.append(confs)
         num_total_detections += num_detections
         num_total_gtruths += num_gtruths
-    print(num_total_detections)
-    print(num_total_gtruths)
     # Concatenates all predictions and confidences together to find class MAP
     all_confs = np.concatenate(all_confs)
     all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
@@ -164,24 +157,29 @@ def detectortest(predictions, ground_truths, output, user_folders):
     # First defaultdict corresponds to class name, inner one corresponds to filename, first list in tuple
     # corresponds to ground truths for that class+file and second list corresponds to predictions
     all_boxes = defaultdict(lambda: defaultdict(lambda: ([],[])))
+    files_in_ground_truth = set()
     with open(ground_truths, 'r') as truths_file:
         reader = csv.reader(truths_file)
         next(reader, None)
         if user_folders:
             for row in reader:
                 all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][0].append(row[PREDS_START:PREDS_END+1])
+                files_in_ground_truth.add((row[FOLDER_LOCATION], row[FILENAME_LOCATION]))
         else:
             for row in reader:
                 all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][0].append(row[PREDS_START:PREDS_END+1])
+                files_in_ground_truth.add(row[FILENAME_LOCATION])
     with open(predictions, 'r') as preds_file:
         reader = csv.reader(preds_file)
         next(reader, None)
         if user_folders:
             for row in reader:
-                all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
+                if (row[FOLDER_LOCATION], row[FILENAME_LOCATION]) in files_in_ground_truth:
+                    all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
         else:
             for row in reader:
-                all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
+                if row[FILENAME_LOCATION] in files_in_ground_truth:
+                    all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
     all_class_maps = {}
     for classname, all_file_preds in all_boxes.items():
         class_map = get_map_for_class(all_file_preds.values(), avg_recalls=None, min_ious=np.asarray([.5]))
