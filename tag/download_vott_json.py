@@ -25,7 +25,10 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
     folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
-    output_location = str(Path(output_location)/folder_name)
+    if user_folders:
+        output_location = str(Path(output_location)/folder_name)
+    else:
+        output_location = str(Path(output_location)/"Images")
     using_blob_storage = blob_credentials is not None
     if using_blob_storage:
         output_location = Path(output_location)
