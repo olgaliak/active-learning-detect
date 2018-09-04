@@ -11,8 +11,8 @@ def extract_data(filename):
     return filename.name, height, width
 
 def select_jsons(image_directory, user_folders, file_location):
-    image_directory = Path(image_directory)
     if user_folders:
+        image_directory = Path(image_directory)
         all_images = []
         all_jsons = []
         for subfolder in image_directory.iterdir():
@@ -21,7 +21,8 @@ def select_jsons(image_directory, user_folders, file_location):
                     key=lambda fullname: str(fullname.name).lower())])
                 all_jsons.append(str(subfolder)+".json")
     else:
-        all_images = [[extract_data(filename) for filename in sorted(image_directory.iterdir(), 
+        image_directory = Path(image_directory)
+        all_images = [[extract_data(filename) for filename in sorted((image_directory/"Images").iterdir(), 
             key=lambda fullname: str(fullname.name).lower())]]
         all_jsons = [str(image_directory)+".json"]
  
