@@ -31,15 +31,12 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         # Code for NMS
         all_indices_to_keep = []
-        num_elements_kept = 0
-        cur_indices_to_keep = np.arange(len(det_x_min))
+        cur_indices_to_keep = np.arange(len(detector_arr))
         # Repeat until no detections left below overlap threshold
-        while np.any(cur_indices_to_keep):
+        while cur_indices_to_keep.size>1:
+            # Add the most confident element
+            all_indices_to_keep.append(cur_indices_to_keep[0])
             cur_x_min = det_x_min[cur_indices_to_keep]
-            # If only one bounding box is left we keep it
-            if len(cur_x_min) <= 1:
-                cur_indices_to_keep = None
-                continue
             cur_x_max = det_x_max[cur_indices_to_keep]
             cur_y_min = det_y_min[cur_indices_to_keep]
             cur_y_max = det_y_max[cur_indices_to_keep]
@@ -50,14 +47,12 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
             union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
             # Just in case a ground truth has zero area
             cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
-            # Add the element you were currently on
-            all_indices_to_keep.append(cur_indices_to_keep[0])
-            num_elements_kept += 1
             # Keep appending [0] to a list
             # Just say cur_indices = np where cur_ious < nms_iou
             print(np.any(cur_ious>nms_iou))
             print(cur_indices_to_keep)
-            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep[num_elements_kept:], cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
+            cur_indices_to_keep = cur_indices_to_keep[1:]
+            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
             print(cur_indices_to_keep)
         detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
