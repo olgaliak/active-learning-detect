@@ -24,7 +24,7 @@ def select_jsons(image_directory, user_folders, file_location):
         image_directory = Path(image_directory)
         all_images = [[extract_data(filename) for filename in sorted((image_directory/"Images").iterdir(), 
             key=lambda fullname: str(fullname.name).lower())]]
-        all_jsons = [str(image_directory)+".json"]
+        all_jsons = [str(image_directory/"Images")+".json"]
  
     for json_file, sorted_images in zip(all_jsons, all_images):
 
