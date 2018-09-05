@@ -52,17 +52,18 @@ def select_jsons(image_directory, user_folders, file_location):
                     all_frames = json_file[str(index)]
                     if all_frames:
                         for cur_frame in all_frames:
-                            vott_width = float(cur_frame["width"])
-                            vott_height = float(cur_frame["height"])
-                            x1 = float(cur_frame["x1"])/vott_width
-                            x2 = float(cur_frame["x2"])/vott_width
-                            y1 = float(cur_frame["y1"])/vott_height
-                            y2 = float(cur_frame["y2"])/vott_height
-                            for tag in cur_frame["tags"]:
-                                if user_folders:
-                                    csv_writer.writerow([filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory])
-                                else:
-                                    csv_writer.writerow([filename,tag,x1,x2,y1,y2,true_height,true_width])
+                            if cur_frame:
+                                vott_width = float(cur_frame["width"])
+                                vott_height = float(cur_frame["height"])
+                                x1 = float(cur_frame["x1"])/vott_width
+                                x2 = float(cur_frame["x2"])/vott_width
+                                y1 = float(cur_frame["y1"])/vott_height
+                                y2 = float(cur_frame["y2"])/vott_height
+                                for tag in cur_frame["tags"]:
+                                    if user_folders:
+                                        csv_writer.writerow([filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory])
+                                    else:
+                                        csv_writer.writerow([filename,tag,x1,x2,y1,y2,true_height,true_width])
                     else:
                         if user_folders:
                             csv_writer.writerow([filename,"NULL",0,0,0,0,true_height,true_width,image_directory])
