@@ -24,8 +24,8 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
-    folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
     if user_folders:
+        folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
         output_location = str(Path(output_location)/folder_name)
     else:
         output_location = str(Path(output_location)/"Images")
