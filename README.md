@@ -81,13 +81,14 @@ This step will:
 This is the snapshot of images file names that need tagging (labeling).  As human annotators make progress on labeling data the list will get smaller and smaller.
 
 ### Tagger machine(s)
-1) Start each "phase" with downloading images to label (or to review pre-labeled images).  
+1) Make sure that the tagging_location is empty.
+2) Start each "phase" with downloading images to label (or to review pre-labeled images).  
 Sample cmd below requests 40 images for tagging:  
 `D:\repo\active-learning-detect\tag>python download_vott_json.py 40 ..\config.ini`  
 This step will create new version of totag_xyz.csv on blob storage that will have 40 images excluded from the list.  
 File tagging_abc.csv will hold list of 40 images being tagged.
-2) Start [VOTT](https://github.com/Microsoft/VoTT) , load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
-3) Once done with labeling push results back to central storage:  
+3) Start [VOTT](https://github.com/Microsoft/VoTT) , load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
+4) Once done with labeling push results back to central storage:  
  `D:\repo\active-learning-detect\tag>python upload_vott_json.py ..\config.ini`
 This step will push tagged_123.csv to blob storage: this file contains actual bounding boxes coordinates for every image.  
 Tagging_abc.csv will contain list of files that are "work in progress" -- the ones to be tagged soon.
