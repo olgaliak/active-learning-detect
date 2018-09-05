@@ -101,11 +101,11 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
             next(reader, None)
             already_tagged |= {row[0] for row in reader}
         all_image_files = list(basedir.rglob(filetype))
-        all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
+        all_names = [filename.name for filename in all_image_files]
+        all_sizes = [cv2.imread(str(image), CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
         all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
         for curindex, image in enumerate(all_image_files):
-            all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
-        all_names = [filename.name for filename in all_image_files]
+            all_images[curindex] = cv2.resize(cv2.imread(str(image), CV2_COLOR_LOAD_FLAG), image_size)
         all_predictions = detector.predict(all_images, min_confidence=min_confidence)
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
 
