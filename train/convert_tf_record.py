@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 
 FOLDER_LOCATION = 8
+HEIGHT_LOCATION = 6
+WIDTH_LOCATION = 7
 
 def int64_feature(value):
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
@@ -19,8 +21,8 @@ def float_feature(value):
 
 def create_tf_example(predictions, raw_img, tag_map):
     filename = predictions[0][0]
-    height = int(predictions[0][6])
-    width = int(predictions[0][6])
+    height = int(predictions[0][HEIGHT_LOCATION])
+    width = int(predictions[0][WIDTH_LOCATION])
     key = hashlib.sha256(raw_img).hexdigest()
     xmin = []
     ymin = []

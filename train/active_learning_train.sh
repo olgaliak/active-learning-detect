@@ -13,7 +13,7 @@ python ${python_file_directory}/update_blob_folder.py cur_config.ini
 echo "Creating TF Record"
 python ${python_file_directory}/convert_tf_record.py cur_config.ini
 # Download tf model if it doesn't exist
-if [ ! -d "$download_location" ]; then
+if [ ! -d "$download_location/${model_name}" ]; then
   mkdir -p $download_location
   curl $tf_url --create-dirs -o ${download_location}/${model_name}.tar.gz
   tar -xzf ${download_location}/${model_name}.tar.gz -C $download_location

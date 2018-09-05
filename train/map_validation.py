@@ -14,7 +14,7 @@ PREDS_END=5
 BOX_CONFIDENCE_LOCATION=-2
 
 def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpoint=True),
-            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True)):
+            avg_recalls = np.linspace(0.00, 1.00, 101, endpoint=True), nms_iou=.7):
     # Used linspace over arange for min_ious/avg_recalls due to issues with endpoints
     all_confs = []
     all_correct_preds = []
@@ -22,7 +22,6 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     num_total_gtruths = 0
     for ground_arr, detector_arr in zipped_data_arr:
         num_gtruths = len(ground_arr)
-        num_detections = len(detector_arr)
         if not detector_arr:
             num_total_gtruths+=num_gtruths
             continue
@@ -30,6 +29,32 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        if nms_iou is not None:
+            # Code for NMS
+            all_indices_to_keep = []
+            cur_indices_to_keep = np.arange(len(detector_arr))
+            # Repeat until no detections left below overlap threshold
+            while cur_indices_to_keep.size>1:
+                # Add the most confident element
+                all_indices_to_keep.append(cur_indices_to_keep[0])
+                cur_x_min = det_x_min[cur_indices_to_keep]
+                cur_x_max = det_x_max[cur_indices_to_keep]
+                cur_y_min = det_y_min[cur_indices_to_keep]
+                cur_y_max = det_y_max[cur_indices_to_keep]
+                intersect_widths = (np.minimum(cur_x_max[0], cur_x_max[1:]) - np.maximum(cur_x_min[0], cur_x_min[1:])).clip(min=0)
+                intersect_heights = (np.minimum(cur_y_max[0], cur_y_max[1:]) - np.maximum(cur_y_min[0], cur_y_min[1:])).clip(min=0)
+                intersect_areas = intersect_widths*intersect_heights
+                # Inclusion exclusion principle!
+                union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
+                # Just in case a ground truth has zero area
+                cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
+                # Keep appending [0] to a list
+                # Just say cur_indices = np where cur_ious < nms_iou
+                cur_indices_to_keep = cur_indices_to_keep[1:]
+                cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
+            detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
+            det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        num_detections = len(detector_arr)
         if not ground_arr:
             num_total_detections+=num_detections
             all_confs.append(confs)
@@ -85,19 +110,43 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
     true_positives = true_positives[:,sort_order]
     # Keeps track of number of true positives until each given point
     all_true_positives = np.cumsum(true_positives, axis=1)
-    # In python >=3 this is equivalent to np.true_divide
-    precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
-    precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
-    # Makes each element in precision list max of all elements to right
-    precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
-    recall = all_true_positives / num_total_gtruths
-    # For each recall, finds leftmost index (i.e. largest precision) greater than it
-    indices_to_average = np.apply_along_axis(np.searchsorted, 1, recall, avg_recalls)
-    # Finds matching largest prediction for each recall and turns it into an array
-    precs_to_average = precision[np.arange(len(precision))[:,np.newaxis], indices_to_average]
-    # Returns average precision over each recall and over each IOU. Can specify an axis
-    # if separate average precision is wanted for each IOU (e.g. to do more precise statistics)
-    return np.mean(precs_to_average)
+    # PASCAL VOC 2012
+    if avg_recalls is None:
+        # Zero pad both sides to calculate area under curve
+        precision = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
+        # Pad one side with zeros and the other with ones for area under curve
+        recall = np.zeros((len(min_ious), num_total_detections+2), dtype=np.float64)
+        recall[:,-1] = np.ones(len(min_ious), dtype=np.float64)
+        # In python >=3 this is equivalent to np.true_divide
+        precision[:,1:-1] = all_true_positives / np.arange(1, num_total_detections+1)
+        # Makes each element in precision list max of all elements to right (ignores endpoints)
+        precision[:,1:-1] = np.maximum.accumulate(precision[:,-2:0:-1], axis=1)[:,::-1]
+        recall[:,1:-1] = all_true_positives / num_total_gtruths
+        # Calculate area under P-R curve for each IOU
+        # Should only be one IOU at .5 for PASCAL
+        all_areas = [] 
+        for cur_recall, cur_precision in zip(recall, precision):
+            # Find indices where value of recall changes
+            change_points = np.nonzero(cur_recall[1:]!=cur_recall[:-1])[0]
+            # Calculate sum of dw * dh as area and append to all areas
+            all_areas.append(np.sum((cur_recall[change_points+1] - cur_recall[change_points]) * cur_precision[change_points+1]))
+        return np.mean(all_areas)
+    # PASCAL VOC 2007
+    else:
+        # The extra zero is to deal with a recall larger than is achieved by model
+        precision = np.zeros((len(min_ious), num_total_detections+1), dtype=np.float64)
+        # In python >=3 this is equivalent to np.true_divide
+        precision[:,:-1] = all_true_positives / np.arange(1, num_total_detections+1)
+        # Makes each element in precision list max of all elements to right (extra zero at right doesn't matter)
+        precision = np.maximum.accumulate(precision[:,::-1], axis=1)[:,::-1]
+        recall = all_true_positives / num_total_gtruths
+        # For each recall, finds leftmost index (i.e. largest precision) greater than it
+        indices_to_average = np.apply_along_axis(np.searchsorted, 1, recall, avg_recalls)
+        # Finds matching largest prediction for each recall and turns it into an array
+        precs_to_average = precision[np.arange(len(precision))[:,np.newaxis], indices_to_average]
+        # Returns average precision over each recall and over each IOU. Can specify an axis
+        # if separate average precision is wanted for each IOU (e.g. to do more precise statistics)
+        return np.mean(precs_to_average)
 
 def detectortest(predictions, ground_truths, output, user_folders):
     '''Inputs test_detector that follows the Detector ABC, images which is
@@ -109,27 +158,32 @@ def detectortest(predictions, ground_truths, output, user_folders):
     # First defaultdict corresponds to class name, inner one corresponds to filename, first list in tuple
     # corresponds to ground truths for that class+file and second list corresponds to predictions
     all_boxes = defaultdict(lambda: defaultdict(lambda: ([],[])))
+    files_in_ground_truth = set()
     with open(ground_truths, 'r') as truths_file:
         reader = csv.reader(truths_file)
         next(reader, None)
         if user_folders:
             for row in reader:
                 all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][0].append(row[PREDS_START:PREDS_END+1])
+                files_in_ground_truth.add((row[FOLDER_LOCATION], row[FILENAME_LOCATION]))
         else:
             for row in reader:
                 all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][0].append(row[PREDS_START:PREDS_END+1])
+                files_in_ground_truth.add(row[FILENAME_LOCATION])
     with open(predictions, 'r') as preds_file:
         reader = csv.reader(preds_file)
         next(reader, None)
         if user_folders:
             for row in reader:
-                all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
+                if (row[FOLDER_LOCATION], row[FILENAME_LOCATION]) in files_in_ground_truth:
+                    all_boxes[row[CLASS_LOCATION]][(row[FOLDER_LOCATION], row[FILENAME_LOCATION])][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
         else:
             for row in reader:
-                all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
+                if row[FILENAME_LOCATION] in files_in_ground_truth:
+                    all_boxes[row[CLASS_LOCATION]][row[FILENAME_LOCATION]][1].append(row[PREDS_START:PREDS_END+1]+row[BOX_CONFIDENCE_LOCATION:BOX_CONFIDENCE_LOCATION+1])
     all_class_maps = {}
     for classname, all_file_preds in all_boxes.items():
-        class_map = get_map_for_class(all_file_preds.values())
+        class_map = get_map_for_class(all_file_preds.values(), avg_recalls=None, min_ious=np.asarray([.5]))
         all_class_maps[classname] = class_map
     # Calculates average over all classes. This is the mAP for the test set.
     avg_map = sum(all_class_maps.values())/len(all_class_maps) if all_class_maps else 0 

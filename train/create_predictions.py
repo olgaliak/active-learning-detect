@@ -63,14 +63,16 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
     if user_folders:
         # TODO: Cross reference with ToTag
         # download latest tagging and tagged
-        with open(cur_tagged, 'r') as file:
-            reader = csv.reader(file)
-            next(reader, None)
-            all_tagged = list(reader)
-        with open(cur_tagging, 'r') as file:
-            reader = csv.reader(file)
-            next(reader, None)
-            all_tagged.extend(list(reader))
+        if cur_tagged is not None:
+            with open(cur_tagged, 'r') as file:
+                reader = csv.reader(file)
+                next(reader, None)
+                all_tagged = list(reader)
+        if cur_tagging is not None:
+            with open(cur_tagging, 'r') as file:
+                reader = csv.reader(file)
+                next(reader, None)
+                all_tagged.extend(list(reader))
         already_tagged = defaultdict(set)
         for row in all_tagged:
             already_tagged[row[FOLDER_LOCATION]].add(row[0])
@@ -127,14 +129,14 @@ if __name__ == "__main__":
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
+    cur_tagged = None
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
-    else:
-        raise ValueError("No Tagging Data. Cannot evaluate without tagging data.")
+        cur_tagged = "tagged.csv"
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+    cur_tagging = None
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
-    else:
-        raise ValueError("No Tagging Data. Cannot evaluate without tagging data.")
+        cur_tagging = "tagging.csv"
     cur_detector = TFDetector(config_file["classes"].split(","), str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb"))
-    get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, "tagged.csv", "tagging.csv", filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
+    get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, cur_tagged, cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
