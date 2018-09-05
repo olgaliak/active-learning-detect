@@ -22,6 +22,7 @@ TAG_ENDING_LOCATION = 7
 
 def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
+    shutil.rmtree(output_location, ignore_errors=True)
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
     if user_folders:
@@ -35,7 +36,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         blob_service, container_name = blob_credentials
     else:
         image_loc = Path(image_loc)
-    Path(output_location).mkdir(parents=True, exist_ok=True)
+    output_location.mkdir(parents=True, exist_ok=True)
     if user_folders:
         if using_blob_storage:
             if image_loc == "":
