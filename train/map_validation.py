@@ -29,30 +29,31 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         # Sort by descending confidence, use mergesort to match COCO evaluation
         detector_arr = detector_arr[detector_arr[:,-1].argsort(kind='mergesort')[::-1]]
         det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
-        # Code for NMS
-        all_indices_to_keep = []
-        cur_indices_to_keep = np.arange(len(detector_arr))
-        # Repeat until no detections left below overlap threshold
-        while cur_indices_to_keep.size>1:
-            # Add the most confident element
-            all_indices_to_keep.append(cur_indices_to_keep[0])
-            cur_x_min = det_x_min[cur_indices_to_keep]
-            cur_x_max = det_x_max[cur_indices_to_keep]
-            cur_y_min = det_y_min[cur_indices_to_keep]
-            cur_y_max = det_y_max[cur_indices_to_keep]
-            intersect_widths = (np.minimum(cur_x_max[0], cur_x_max[1:]) - np.maximum(cur_x_min[0], cur_x_min[1:])).clip(min=0)
-            intersect_heights = (np.minimum(cur_y_max[0], cur_y_max[1:]) - np.maximum(cur_y_min[0], cur_y_min[1:])).clip(min=0)
-            intersect_areas = intersect_widths*intersect_heights
-            # Inclusion exclusion principle!
-            union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
-            # Just in case a ground truth has zero area
-            cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
-            # Keep appending [0] to a list
-            # Just say cur_indices = np where cur_ious < nms_iou
-            cur_indices_to_keep = cur_indices_to_keep[1:]
-            cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
-        detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
-        det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
+        if nms_iou is not None:
+            # Code for NMS
+            all_indices_to_keep = []
+            cur_indices_to_keep = np.arange(len(detector_arr))
+            # Repeat until no detections left below overlap threshold
+            while cur_indices_to_keep.size>1:
+                # Add the most confident element
+                all_indices_to_keep.append(cur_indices_to_keep[0])
+                cur_x_min = det_x_min[cur_indices_to_keep]
+                cur_x_max = det_x_max[cur_indices_to_keep]
+                cur_y_min = det_y_min[cur_indices_to_keep]
+                cur_y_max = det_y_max[cur_indices_to_keep]
+                intersect_widths = (np.minimum(cur_x_max[0], cur_x_max[1:]) - np.maximum(cur_x_min[0], cur_x_min[1:])).clip(min=0)
+                intersect_heights = (np.minimum(cur_y_max[0], cur_y_max[1:]) - np.maximum(cur_y_min[0], cur_y_min[1:])).clip(min=0)
+                intersect_areas = intersect_widths*intersect_heights
+                # Inclusion exclusion principle!
+                union_areas = ((cur_x_max[0]-cur_x_min[0])*(cur_y_max[0]-cur_y_min[0]) + (cur_x_max[1:]-cur_x_min[1:])*(cur_y_max[1:]-cur_y_min[1:])) - intersect_areas
+                # Just in case a ground truth has zero area
+                cur_ious = np.divide(intersect_areas, union_areas, out=union_areas, where=union_areas!=0)
+                # Keep appending [0] to a list
+                # Just say cur_indices = np where cur_ious < nms_iou
+                cur_indices_to_keep = cur_indices_to_keep[1:]
+                cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
+            detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
+            det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         num_detections = len(detector_arr)
         if not ground_arr:
             num_total_detections+=num_detections
