@@ -22,21 +22,19 @@ TAG_ENDING_LOCATION = 7
 
 def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
-    shutil.rmtree(output_location, ignore_errors=True)
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
     if user_folders:
         folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
-        output_location = str(Path(output_location)/folder_name)
+        output_location = Path(output_location)/folder_name
     else:
-        output_location = str(Path(output_location)/"Images")
+        output_location = Path(output_location)/"Images"
+    output_location.mkdir(parents=True, exist_ok=True)
     using_blob_storage = blob_credentials is not None
     if using_blob_storage:
-        output_location = Path(output_location)
         blob_service, container_name = blob_credentials
     else:
         image_loc = Path(image_loc)
-    output_location.mkdir(parents=True, exist_ok=True)
     if user_folders:
         if using_blob_storage:
             if image_loc == "":
@@ -56,7 +54,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
                 blob_service.get_blob_to_path(container_name, prediction[0][FILENAME_LOCATION],
                     str(output_location/prediction[0][FILENAME_LOCATION]))
         else:
-            shutil.copy(str(image_loc/prediction[0][FILENAME_LOCATION]), output_location)
+            shutil.copy(str(image_loc/prediction[0][FILENAME_LOCATION]), str(output_location))
     all_predictions.sort(key=lambda x: x[0][FILENAME_LOCATION])
     dirjson = {}
     dirjson["frames"] = {}
@@ -111,7 +109,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         json.dump(dirjson, json_out)
 
 def get_top_rows(file_location, num_rows, user_folders, pick_max):
-    with open(file_location+".csv", 'r') as file:
+    with (file_location/"totag.csv").open(mode='r') as file:
         reader = csv.reader(file)
         header = next(reader)
         csv_list = list(reader)
@@ -137,8 +135,8 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max):
         else:
             top_rows = nsmallest(num_rows, all_files.values(), key=lambda x:float(x[0][CONFIDENCE_LOCATION]))
     tagging_files = {row[0][0] for row in top_rows}
-    file_exists = Path(file_location+"_tagging.csv").is_file()
-    with open(file_location+"_new.csv", 'w', newline='') as untagged, open(file_location+"_tagging.csv", 'a', newline='') as tagging:
+    file_exists = (file_location/"tagging.csv").is_file()
+    with (file_location/"totag.csv").open(mode='w', newline='') as untagged, (file_location/"tagging.csv").open(mode='a', newline='') as tagging:
         untagged_writer, tagging_writer = csv.writer(untagged), csv.writer(tagging)
         untagged_writer.writerow(header)
         if not file_exists:
@@ -172,14 +170,17 @@ if __name__ == "__main__":
     config_file = Config.parse_file(sys.argv[2])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
+    shutil.rmtree(config_file["tagging_location"], ignore_errors=True)
+    csv_file_loc = Path(config_file["tagging_location"])
+    csv_file_loc.mkdir(parents=True, exist_ok=True)
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'totag_(.*).csv', blob.name)]
-    block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "totag.csv")
+    block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"totag.csv"))
     container_name = config_file["image_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "totag_tagging.csv")
-    create_vott_json(str(Path(config_file["tagging_location"])/"totag"), int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
+    create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
                 blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","), max_tags_per_pixel=config_file.get("max_tags_per_pixel",None))
     container_name = config_file["label_container_name"]
-    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), "totag_tagging.csv")
-    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), "totag_new.csv")
+    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), str(csv_file_loc/"tagging.csv"))
+    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), str(csv_file_loc/"totag.csv"))
