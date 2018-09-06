@@ -100,6 +100,9 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
         all_confs.append(confs)
         num_total_detections += num_detections
         num_total_gtruths += num_gtruths
+    # Edge case of no predictions for a class
+    if not all_confs:
+        return 0
     # Concatenates all predictions and confidences together to find class MAP
     all_confs = np.concatenate(all_confs)
     all_correct_preds = [np.concatenate(cur_pred) for cur_pred in zip(*all_correct_preds)]
