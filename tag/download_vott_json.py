@@ -178,7 +178,7 @@ if __name__ == "__main__":
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "totag_tagging.csv")
-    create_vott_json("totag", int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
+    create_vott_json(str(Path(config_file["tagging_location"])/"totag"), int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
                 blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","), max_tags_per_pixel=config_file.get("max_tags_per_pixel",None))
     container_name = config_file["label_container_name"]
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), "totag_tagging.csv")
