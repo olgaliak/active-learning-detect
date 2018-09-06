@@ -34,16 +34,17 @@ def create_tf_example(predictions, raw_img, tag_map):
     poses = []
     difficult_obj = []
     for prediction in predictions:
-        ymin.append(float(prediction[4]))
-        xmin.append(float(prediction[2]))
-        ymax.append(float(prediction[5]))
-        xmax.append(float(prediction[3]))
-        tag_name = prediction[1]
-        classes_text.append(tag_name.encode('utf8'))
-        classes.append(tag_map[tag_name])
-        truncated.append(0)
-        poses.append("Unspecified".encode('utf8'))
-        difficult_obj.append(0)
+        if prediction[1]!="NULL":
+            ymin.append(float(prediction[4]))
+            xmin.append(float(prediction[2]))
+            ymax.append(float(prediction[5]))
+            xmax.append(float(prediction[3]))
+            tag_name = prediction[1]
+            classes_text.append(tag_name.encode('utf8'))
+            classes.append(tag_map[tag_name])
+            truncated.append(0)
+            poses.append("Unspecified".encode('utf8'))
+            difficult_obj.append(0)
     
     example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': int64_feature([height]),
