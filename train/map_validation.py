@@ -52,6 +52,8 @@ def get_map_for_class(zipped_data_arr, min_ious=np.linspace(.50, 0.95, 10, endpo
                 # Just say cur_indices = np where cur_ious < nms_iou
                 cur_indices_to_keep = cur_indices_to_keep[1:]
                 cur_indices_to_keep = np.intersect1d(cur_indices_to_keep, cur_indices_to_keep[np.nonzero(cur_ious < nms_iou)[0]], assume_unique=True)
+            if cur_indices_to_keep.size==1:
+                all_indices_to_keep.append(cur_indices_to_keep[0])
             detector_arr = detector_arr[np.asarray(all_indices_to_keep)]
             det_x_min, det_x_max, det_y_min, det_y_max, confs = detector_arr.transpose()
         num_detections = len(detector_arr)
@@ -196,24 +198,25 @@ def detectortest(predictions, ground_truths, output, user_folders):
         for classdata in all_class_maps.items():
             csv_writer.writerow(classdata)
 if __name__ == "__main__":
-    import re
-    from azure.storage.blob import BlockBlobService
-    import sys
-    import os    
-    # Allow us to import utils
-    config_dir = str(Path.cwd().parent / "utils")
-    if config_dir not in sys.path:
-        sys.path.append(config_dir)
-    from config import Config
-    if len(sys.argv)<2:
-        raise ValueError("Need to specify config file")
-    config_file = Config.parse_file(sys.argv[1])
-    block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
-    container_name = config_file["label_container_name"]
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'test_(.*).csv', blob.name)]
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], config_file["test_output"])
-        detectortest(config_file["tagged_predictions"], config_file["test_output"], config_file["validation_output"], config_file["user_folders"]=="True")
-    else:
-        # TODO: If we keep track of val/train we can calc prec/f-score for that too
-        detectortest(config_file["tagged_predictions"], config_file["tagged_output"], config_file["validation_output"], config_file["user_folders"]=="True")
+    # import re
+    # from azure.storage.blob import BlockBlobService
+    # import sys
+    # import os    
+    # # Allow us to import utils
+    # config_dir = str(Path.cwd().parent / "utils")
+    # if config_dir not in sys.path:
+    #     sys.path.append(config_dir)
+    # from config import Config
+    # if len(sys.argv)<2:
+    #     raise ValueError("Need to specify config file")
+    # config_file = Config.parse_file(sys.argv[1])
+    # block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
+    # container_name = config_file["label_container_name"]
+    # file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'test_(.*).csv', blob.name)]
+    # if file_date:
+    #     block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], config_file["test_output"])
+    #     detectortest(config_file["tagged_predictions"], config_file["test_output"], config_file["validation_output"], config_file["user_folders"]=="True")
+    # else:
+    #     # TODO: If we keep track of val/train we can calc prec/f-score for that too
+    #     detectortest(config_file["tagged_predictions"], config_file["tagged_output"], config_file["validation_output"], config_file["user_folders"]=="True")
+    detectortest("tagged.csv", "test.csv", "val.csv", False)
