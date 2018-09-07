@@ -74,17 +74,17 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
 
 def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, output_file_untagged, tagged_images, tagging_images,
                                 filetype, min_confidence=.2, user_folders=True):
-    basedir = Path(basedir)
+    basedir = Path(image_loc)
     CV2_COLOR_LOAD_FLAG = 1
     all_predictions = []
     if user_folders:
-        if cur_tagged is not None:
-            with open(cur_tagged, 'r') as file:
+        if tagged_images is not None:
+            with open(tagged_images, 'r') as file:
                 reader = csv.reader(file)
                 next(reader, None)
                 all_tagged = list(reader)
-        if cur_tagging is not None:
-            with open(cur_tagging, 'r') as file:
+        if tagging_images is not None:
+            with open(tagging_images, 'r') as file:
                 reader = csv.reader(file)
                 next(reader, None)
                 all_tagged.extend(list(reader))
@@ -107,11 +107,11 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
         all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
 
     else:
-        with open(cur_tagged, 'r') as file:
+        with open(tagged_images, 'r') as file:
             reader = csv.reader(file)
             next(reader, None)
             already_tagged = {row[0] for row in reader}
-        with open(cur_tagging, 'r') as file:
+        with open(tagging_images, 'r') as file:
             reader = csv.reader(file)
             next(reader, None)
             already_tagged |= {row[0] for row in reader}
