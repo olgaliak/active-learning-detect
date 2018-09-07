@@ -210,11 +210,6 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
             print("trainer works")
 
     print ("Training...")
-<<<<<<< HEAD
-    print(project_id)
-    print(trainer.get_untagged_image_count(project_id))
-=======
->>>>>>> d92800d9e1f5815f4e9d350febb83bd709127e27
     iteration = trainer.train_project(project_id)
     while (iteration.status != "Completed"):
         iteration = trainer.get_iteration(project_id, iteration.id)
