@@ -3,6 +3,7 @@ import csv
 from pathlib import Path
 import re
 import functools
+from typing import List, Tuple, Dict, AbstractSet
 
 from azure.cognitiveservices.vision.customvision.training import training_api
 from azure.cognitiveservices.vision.customvision.prediction import prediction_endpoint
@@ -38,7 +39,7 @@ def pred_to_list(prediction):
     y_max = y_min + prediction.bounding_box.height
     return [prediction.probability, prediction.tag_name, y_min, x_min, y_max, x_max]
 
-def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str], all_sizes: List[Tuple[int]], 
+def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str], all_sizes: List[Tuple[int]],
         untagged_output: str, tagged_output: str, file_set: AbstractSet, user_folders: bool = True):
     '''
     Convert list of Detector class predictions as well as list of image sizes
@@ -71,7 +72,7 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
                     (tagged_writer if name in file_set else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,prediction[0], confidence])
 
 def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, output_file_untagged, tagged_images, tagging_images,
-                                filetype, min_confidence=.2, user_folders=True):    
+                                filetype, min_confidence=.2, user_folders=True):
     basedir = Path(basedir)
     CV2_COLOR_LOAD_FLAG = 1
     all_predictions = []
@@ -91,7 +92,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
             already_tagged[row[FOLDER_LOCATION]].add(row[0])
         subdirs = [subfile for subfile in basedir.iterdir() if subfile.is_dir()]
         all_names = []
-        all_image_files = [] 
+        all_image_files = []
         all_sizes = []
         all_predictions = []
         for subdir in subdirs:
@@ -103,7 +104,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
                 with image.open(mode="rb") as img_data:
                     all_predictions.append(predictor.predict_image(project_id, img_data))
         all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
-            
+
     else:
         with open(cur_tagged, 'r') as file:
             reader = csv.reader(file)
@@ -121,10 +122,10 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
                 all_predictions.append(predictor.predict_image(project_id, img_data))
         all_sizes = [cv2.imread(str(image), CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
-    
+
 
 def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_names = ["stamp"], test_file=None):
-    
+
     # Make sure tag_names are in custom vision and create tag_map
     all_tag_names = {tag.name:tag for tag in trainer.get_tags(project_id)}
     for tag_name in tag_names:
@@ -135,7 +136,7 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
     num_tagged_images = trainer.get_tagged_image_count(project_id)
     all_images = []
     for num_to_skip in range(0, num_tagged_images, IMAGE_BATCH_SIZE):
-        all_images+=get_tagged_images(project_id, take=IMAGE_BATCH_SIZE, skip=num_to_skip)
+        all_images+=trainer.get_tagged_images(project_id, take=IMAGE_BATCH_SIZE, skip=num_to_skip)
     all_existing_image_names = set(image.id for image in all_images)
 
     with open(tags_file, 'r') as file:
@@ -148,7 +149,7 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
         if test_file is not None:
             with open(test_file, 'r') as file:
                 testreader = csv.reader(file)
-                next(reader, None)
+                next(testreader, None)
                 all_test = set(row[IMAGE_NAME_LOCATION]+"/"+row[FOLDER_LOCATION] for row in testreader)
             for row in all_tags:
                 if row[0] not in all_test:
@@ -170,7 +171,7 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
         to_upload = []
         for image_name, information in all_train.items():
             regions = [get_region(row) for row in information]
-            with Path(image_loc)/information[0][FOLDER_LOCATION]/information[0][IMAGE_NAME_LOCATION].open(mode="rb") as image_contents:
+            with (Path(image_loc)/information[0][FOLDER_LOCATION]/information[0][IMAGE_NAME_LOCATION]).open(mode="rb") as image_contents:
                 to_upload.append(ImageFileCreateEntry(name=image_name, contents=image_contents.read(), regions=regions))
         for cur_index in range(0,len(to_upload),IMAGE_BATCH_SIZE):
             trainer.create_images_from_files(project_id, images=to_upload[cur_index:cur_index+IMAGE_BATCH_SIZE])
@@ -179,12 +180,12 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
         if test_file is not None:
             with open(test_file, 'r') as file:
                 testreader = csv.reader(file)
-                next(reader, None)
+                next(testreader, None)
                 all_test = set(row[IMAGE_NAME_LOCATION] for row in testreader)
             for row in all_tags:
                 if row[IMAGE_NAME_LOCATION] not in all_test:
                     all_train[row[IMAGE_NAME_LOCATION]].append(row)
-            
+
             # Remove images from test set that are in custom vision training set
             images_to_delete = []
             for image_name in all_test:
@@ -201,13 +202,14 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
         to_upload = []
         for image_name, information in all_train.items():
             regions = [get_region(row) for row in information]
-            with Path(image_loc)/image_name.open(mode="rb") as image_contents:
+            with (Path(image_loc)/image_name).open(mode="rb") as image_contents:
                 to_upload.append(ImageFileCreateEntry(name=image_name, contents=image_contents.read(), regions=regions))
         for cur_index in range(0,len(to_upload),IMAGE_BATCH_SIZE):
             trainer.create_images_from_files(project_id, images=to_upload[cur_index:cur_index+IMAGE_BATCH_SIZE])
+            print("trainer works")
 
     print ("Training...")
-    iteration = trainer.train_project(project.id)
+    iteration = trainer.train_project(project_id)
     while (iteration.status != "Completed"):
         iteration = trainer.get_iteration(project.id, iteration.id)
         print ("Training status: " + iteration.status)
