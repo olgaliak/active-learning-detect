@@ -125,7 +125,10 @@ Training cycle can now be repeated on bigger training set and dataset with highe
 I'm using wood knots dataset mentioned in this [blog](http://blog.revolutionanalytics.com/2017/09/wood-knots.html) 
 Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
  
+# Custom Vision HttpOperationError 'Bad Request'
 
-
-
-
+The current custom vision SDK is in preview mode, and one of the limitations is that an error while training does not return an error message, just a generic 'Bad Request' response. Common reasons for this error include:
+1) Having a tag with less than 15 images. Custom Vision requires a minimum of 15 images per tag and will throw an error if it finds any tag with less than that many.
+2) Having a tag out of bounds. If for some reason you attempt to add a tag through the API which is out of bounds, it will accept the request but will throw an error while training.
+3) No new images since last training session. If you try to train without adding additional images Custom Vision will return a bad request exception.
+The best way to debug these is to go into the Custom Vision website (customvision.ai) and click the train button, which should then tell you what the error was.
