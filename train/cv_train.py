@@ -123,7 +123,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
             with image.open(mode="rb") as img_data:
                 all_predictions.append(predictor.predict_image(project_id, img_data))
         all_sizes = [cv2.imread(str(image), CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
-    make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
+    make_csv_output(all_predictions, all_names, all_sizes, output_file_untagged, output_file_tagged, already_tagged, user_folders)
 
 
 def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_names = ["stamp"], test_file=None):
