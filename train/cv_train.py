@@ -27,8 +27,8 @@ def calculate_confidence(predictions):
 
 def convert_row_to_region(tag_map, row):
     tag = tag_map[row[TAG_NAME_LOCATION]]
-    x = float(X_MIN_LOCATION)
-    y = float(Y_MIN_LOCATION)
+    x = float(row[X_MIN_LOCATION])
+    y = float(row[Y_MIN_LOCATION])
     width = float(row[X_MAX_LOCATION]) - x
     height = float(row[Y_MAX_LOCATION])- y
     return Region(tag_id=tag.id, left=x,top=y,width=width,height=height)
@@ -212,12 +212,12 @@ def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_
     print ("Training...")
     iteration = trainer.train_project(project_id)
     while (iteration.status != "Completed"):
-        iteration = trainer.get_iteration(project.id, iteration.id)
+        iteration = trainer.get_iteration(project_id, iteration.id)
         print ("Training status: " + iteration.status)
         time.sleep(1)
 
     # The iteration is now trained. Make it the default project endpoint
-    trainer.update_iteration(project.id, iteration.id, is_default=True)
+    trainer.update_iteration(project_id, iteration.id, is_default=True)
     print ("Done!")
 
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
             block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
             cur_tagging = "tagging.csv"
 
-        create_cv_predictions(config_dir["image_dir"], predictor, config_file["project_id"], config_file["tagged_output"], config_file["untagged_output"],
+        create_cv_predictions(config_file["image_dir"], predictor, config_file["project_id"], config_file["tagged_output"], config_file["untagged_output"],
                 config_file["tagged_output"], cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
         detectortest(config_file["tagged_predictions"], config_file["test_output"], config_file["validation_output"], config_file["user_folders"]=="True")
     else:
@@ -274,7 +274,7 @@ if __name__ == "__main__":
             block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
             cur_tagging = "tagging.csv"
 
-        create_cv_predictions(config_dir["image_dir"], predictor, config_file["project_id"], config_file["tagged_predictions"], config_file["untagged_output"],
+        create_cv_predictions(config_file["image_dir"], predictor, config_file["project_id"], config_file["tagged_predictions"], config_file["untagged_output"],
                 config_file["tagged_output"], cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
 
         detectortest(config_file["tagged_predictions"], config_file["tagged_output"], config_file["validation_output"], config_file["user_folders"]=="True")
