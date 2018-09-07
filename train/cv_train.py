@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import functools
 from typing import List, Tuple, Dict, AbstractSet
+import time
 
 from azure.cognitiveservices.vision.customvision.training import training_api
 from azure.cognitiveservices.vision.customvision.prediction import prediction_endpoint
