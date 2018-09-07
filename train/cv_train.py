@@ -123,7 +123,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
     
 
-def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_names = ["stamp"], test_file=None):
+def train_cv_model(tags_file, trainer, project_id, image_loc, user_folders, tag_names = ["stamp"], test_file=None):
     
     # Make sure tag_names are in custom vision and create tag_map
     all_tag_names = {tag.name:tag for tag in trainer.get_tags(project_id)}
@@ -138,10 +138,10 @@ def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_
         all_images+=get_tagged_images(project_id, take=IMAGE_BATCH_SIZE, skip=num_to_skip)
     all_existing_image_names = set(image.id for image in all_images)
 
-    with open(pred_file, 'r') as file:
+    with open(tags_file, 'r') as file:
         reader = csv.reader(file)
         next(reader, None)
-        all_preds = list(reader)
+        all_tags = list(reader)
 
     all_train = defaultdict(list)
     if user_folders:
@@ -150,7 +150,7 @@ def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_
                 testreader = csv.reader(file)
                 next(reader, None)
                 all_test = set(row[IMAGE_NAME_LOCATION]+"/"+row[FOLDER_LOCATION] for row in testreader)
-            for row in all_preds:
+            for row in all_tags:
                 if row[0] not in all_test:
                     all_train[row[IMAGE_NAME_LOCATION]+"/"+row[FOLDER_LOCATION]].append(row)
 
@@ -163,7 +163,7 @@ def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_
                 trainer.delete_images(project_id, images_to_delete[cur_index:cur_index+IMAGE_BATCH_SIZE])
 
         else:
-            for row in all_preds:
+            for row in all_tags:
                 all_train[row[IMAGE_NAME_LOCATION]+"/"+row[FOLDER_LOCATION]].append(row)
 
         # Add images from training set that are not yet in custom vision training set
@@ -181,7 +181,7 @@ def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_
                 testreader = csv.reader(file)
                 next(reader, None)
                 all_test = set(row[IMAGE_NAME_LOCATION] for row in testreader)
-            for row in all_preds:
+            for row in all_tags:
                 if row[IMAGE_NAME_LOCATION] not in all_test:
                     all_train[row[IMAGE_NAME_LOCATION]].append(row)
             
@@ -194,7 +194,7 @@ def train_cv_model(pred_file, trainer, project_id, image_loc, user_folders, tag_
                 trainer.delete_images(project_id, images_to_delete[cur_index:cur_index+IMAGE_BATCH_SIZE])
 
         else:
-            for row in all_preds:
+            for row in all_tags:
                 all_train[row[IMAGE_NAME_LOCATION]].append(row)
 
         # Add images from training set that are not yet in custom vision training set
@@ -230,21 +230,51 @@ if __name__ == "__main__":
         raise ValueError("Need to specify config file")
     config_file = Config.parse_file(sys.argv[1])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
-    container_name = config_file["label_container_name"]
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
+    label_container_name = config_file["label_container_name"]
+    img_container_name = config_file["image_container_name"]
+    image_folder_name =  config_file["image_dir"]
+    from update_blob_folder import update_folder
+    update_folder(image_folder_name, block_blob_service, img_container_name)
+
+
+    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(label_container_name) if re.match(r'tagged_(.*).csv', blob.name)]
     if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], config_file["tagged_output"])
+        block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], config_file["tagged_output"])
     else:
         raise ValueError("No tagged data exists. Cannot train model without any tagged data.")
 
     from map_validation import detectortest
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'test_(.*).csv', blob.name)]
+    trainer = training_api.TrainingApi(config_file["training_key"])
+    predictor = prediction_endpoint.PredictionEndpoint(config_file["prediction_key"])
+    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(label_container_name) if re.match(r'test_(.*).csv', blob.name)]
     if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], config_file["test_output"])
-        train_cv_model(config_file["tagged_output"],config_file["tf_record_location"],config_file["image_dir"], 
-            config_file["user_folders"]=="True", tag_names=config_file["classes"].split(","), test_file=config_file["test_output"])
+        block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], config_file["test_output"])
+        train_cv_model(config_file["tagged_output"], trainer, config_file["project_id"], config_file["image_dir"], config_file["user_folders"]=="True",
+           tag_names=config_file["classes"].split(","), test_file=config_file["test_output"])
+
+        file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(label_container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+        cur_tagging = None
+        if file_date:
+            block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+            cur_tagging = "tagging.csv"
+
+        create_cv_predictions(config_dir["image_dir"], predictor, config_file["project_id"], config_file["tagged_output"], config_file["untagged_output"],
+                config_file["tagged_output"], cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
         detectortest(config_file["tagged_predictions"], config_file["test_output"], config_file["validation_output"], config_file["user_folders"]=="True")
     else:
-        train_cv_model(config_file["tagged_output"],config_file["tf_record_location"],config_file["image_dir"], 
-            config_file["user_folders"]=="True", tag_names=config_file["classes"].split(","))
+        train_cv_model(config_file["tagged_output"], trainer, config_file["project_id"], config_file["image_dir"], config_file["user_folders"]=="True",
+           tag_names=config_file["classes"].split(","))
+
+        file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(label_container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+        cur_tagging = None
+        if file_date:
+            block_blob_service.get_blob_to_path(label_container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+            cur_tagging = "tagging.csv"
+
+        create_cv_predictions(config_dir["image_dir"], predictor, config_file["project_id"], config_file["tagged_predictions"], config_file["untagged_output"],
+                config_file["tagged_output"], cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
+
         detectortest(config_file["tagged_predictions"], config_file["tagged_output"], config_file["validation_output"], config_file["user_folders"]=="True")
+    # Upload validation files and new tags
+    block_blob_service.create_blob_from_path(label_container_name, "{}_{}.{}".format("performance",int(time.time() * 1000),"csv"), config_file["validation_output"])
+    block_blob_service.create_blob_from_path(label_container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), config_file["untagged_output"])
