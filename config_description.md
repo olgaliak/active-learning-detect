@@ -26,6 +26,14 @@ This is the folder where all images will be downloaded and the VOTT .json file w
 This determines whether the images with lowest or highest confidence are chosen to be labelled. Only set it to True if you wish to evaluate images where your model is very confident to ensure that it is not learning incorrect patterns with high confidence. Otherwise, keep it at the default value of False.
 - max_tags_per_pixel:
 This limits the number of tags per pixel, preventing too many duplicate tags.
+## Custom Vision
+These variables are all available at customvision.ai if you select the settings icon.
+- training_key:
+This is your Custom Vision training key.
+- prediction_key:
+This is your Custom Vision prediction key.
+- project_id:
+This is the project ID for an **object detection** project in custom vision. You can create a new one by selecting the New Project button.
 ## Training Machine
 These are variables that must be set (along with azure storage information and image information) on the config.ini file for the training machine. They are not needed on a tagging machine.
 ### Locations
