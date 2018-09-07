@@ -121,6 +121,27 @@ Human annotator(s) deletes any leftovers from previous predictions (csv files in
 Training cycle can now be repeated on bigger training set and dataset with higher quality of pre-labeled bounding boxes could be obtained. 
 
 
+# Using Custom Vision service for training
+
+The Custom Vision service can be used instead of Tensorflow in case you do not have access to an Azure Data Science VM or other GPU-enabled machine. The steps for Custom Vision are pretty similar to those for Tensorflow, although the training step is slightly different:
+
+### Model (re)training on Custom Vision
+If you would like to repartition the test set, run:
+
+`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini`
+
+This script will take all the tagged data and split some of it into a test set, which will not be trained/validated on and will then be use by evalution code to return mAP values.
+
+To train the model:  
+python cv_train.py ../config.ini
+
+This python script will train a custom vision model based on available labeled data.  
+
+Model will evaluated on test set and perf numbers will be saved in blob storage (performance.csv).
+
+Latest totag.csv will have predictions for all available images made of the newly trained model -- bounding box locations that could be used by human annotator as a starter.
+
+
 # Sample dataset
 I'm using wood knots dataset mentioned in this [blog](http://blog.revolutionanalytics.com/2017/09/wood-knots.html) 
 Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
