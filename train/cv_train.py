@@ -104,7 +104,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
             all_names += [(foldername, filename.name) for filename in cur_image_names]
             for image in cur_image_names:
                 with image.open(mode="rb") as img_data:
-                    all_predictions.append(predictor.predict_image(project_id, img_data))
+                    all_predictions.append(predictor.predict_image(project_id, img_data).predictions)
         all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
 
     else:
@@ -121,7 +121,7 @@ def create_cv_predictions(image_loc, predictor, project_id, output_file_tagged, 
         all_predictions = []
         for image in all_image_files:
             with image.open(mode="rb") as img_data:
-                all_predictions.append(predictor.predict_image(project_id, img_data))
+                all_predictions.append(predictor.predict_image(project_id, img_data).predictions)
         all_sizes = [cv2.imread(str(image), CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
     make_csv_output(all_predictions, all_names, all_sizes, output_file_untagged, output_file_tagged, already_tagged, user_folders)
 
