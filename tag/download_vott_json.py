@@ -147,6 +147,8 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max):
 
 def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, min_confidence = 0, blob_credentials=None, tag_names = ["stamp"], max_tags_per_pixel=None):
     all_files = get_top_rows(file_location, num_rows, user_folders, pick_max)
+    if len(all_files) < num_rows:
+        print("WARNING: Less unlabelled images remaining than number selected for tagging")
     # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
     # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
     make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, min_confidence=min_confidence, tag_names=tag_names,
