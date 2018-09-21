@@ -72,8 +72,8 @@ def create_tf_record(pred_file, record_file, image_loc, user_folders, label_map_
                      split_names=["train","val"], split_percent=[.7,.3], tag_names = ["stamp"], test_file=None):
     
     with open(label_map_path, "w") as map_file:
-      for index, name in enumerate(tag_names, 1):
-          map_file.write("item {{\n  id: {}\n  name: '{}'\n}}".format(index, name))
+        for index, name in enumerate(tag_names, 1):
+            map_file.write("item {{\n  id: {}\n  name: '{}'\n}}".format(index, name))
     
     record_file = Path(record_file)
     with open(pred_file, 'r') as file:
