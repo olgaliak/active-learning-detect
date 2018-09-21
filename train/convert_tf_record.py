@@ -68,8 +68,12 @@ def create_tf_example(predictions, raw_img, tag_map):
     }))
     return example
 
-def create_tf_record(pred_file, record_file, image_loc, user_folders, split_names=["train","val"],
-        split_percent=[.7,.3], tag_names = ["stamp"], test_file=None):
+def create_tf_record(pred_file, record_file, image_loc, user_folders, label_map_path,
+                     split_names=["train","val"], split_percent=[.7,.3], tag_names = ["stamp"], test_file=None):
+    
+    with open(label_map_path, "w") as map_file:
+      for index, name in enumerate(tag_names, 1):
+          map_file.write("item {{\n  id: {}\n  name: '{}'\n}}".format(index, name))
     
     record_file = Path(record_file)
     with open(pred_file, 'r') as file:
@@ -139,7 +143,7 @@ if __name__ == "__main__":
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], config_file["test_output"])
         create_tf_record(config_file["tagged_output"],config_file["tf_record_location"],config_file["image_dir"], 
-            config_file["user_folders"]=="True", tag_names=config_file["classes"].split(","), test_file=config_file["test_output"])
+            config_file["user_folders"]=="True", config_file["label_map_path"], tag_names=config_file["classes"].split(","), test_file=config_file["test_output"])
     else:
         create_tf_record(config_file["tagged_output"],config_file["tf_record_location"],config_file["image_dir"], 
-            config_file["user_folders"]=="True", tag_names=config_file["classes"].split(","))
+            config_file["user_folders"]=="True", config_file["label_map_path"], tag_names=config_file["classes"].split(","))
