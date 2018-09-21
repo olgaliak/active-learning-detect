@@ -20,7 +20,7 @@ TAG_STARTING_LOCATION = 2
 # Should be equal to width_location
 TAG_ENDING_LOCATION = 7
 
-def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
+def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None, min_confidence=0,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
@@ -63,8 +63,8 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         set_predictions = defaultdict(list)
         if max_tags_per_pixel is None:
             for prediction in predictions:
-                x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
-                if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
+                x_1, x_2, y_1, y_2, height, width, confidence = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1]+[prediction[TAG_CONFIDENCE_LOCATION]])
+                if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0) and confidence>min_confidence:
                     x_1 = int(x_1*width)
                     x_2 = int(x_2*width)
                     y_1 = int(y_1*height)
@@ -74,8 +74,8 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
             if predictions:
                 num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
                 for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
-                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
-                    if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
+                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1]+[prediction[TAG_CONFIDENCE_LOCATION]])
+                    if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0) and confidence>min_confidence:
                         x_1 = int(x_1*width)
                         x_2 = int(x_2*width)
                         y_1 = int(y_1*height)
@@ -145,11 +145,11 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max):
             (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
     return top_rows
 
-def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None, tag_names = ["stamp"], max_tags_per_pixel=None):
+def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, min_confidence = 0, blob_credentials=None, tag_names = ["stamp"], max_tags_per_pixel=None):
     all_files = get_top_rows(file_location, num_rows, user_folders, pick_max)
     # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
     # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
-    make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, tag_names=tag_names,
+    make_vott_output(all_files, output_location, user_folders, image_loc, blob_credentials=blob_credentials, min_confidence=min_confidence, tag_names=tag_names,
     tag_colors=['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for 
             r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]], max_tags_per_pixel=max_tags_per_pixel)
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
     create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "", config_file["tagging_location"], 
-                blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","), max_tags_per_pixel=config_file.get("max_tags_per_pixel",None))
+                min_confidence=float(config_file["min_confidence"]), blob_credentials=(block_blob_service, container_name), tag_names=config_file["classes"].split(","), max_tags_per_pixel=config_file.get("max_tags_per_pixel",None))
     container_name = config_file["label_container_name"]
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), str(csv_file_loc/"tagging.csv"))
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), str(csv_file_loc/"totag.csv"))
