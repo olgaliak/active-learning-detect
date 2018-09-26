@@ -17,9 +17,9 @@ Any reasonably recent version of these packages should work. TensorFlow should b
 
 ### Enabling GPU Device
 
-Installing CUDA drivers for Ubuntu 16.04 for NVidia Tesla K80. If you have a different GPU / OS please go to official website and found your driver.
+Installing CUDA drivers for Ubuntu 16.04 for NVidia Tesla K80. If you have a different GPU / OS please go to [official website](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1710/x86_64/) and found your driver.
 
-To install NVidia drivers
+To install NVIDIA drivers
 
 ```
 # From NVIDIA website
