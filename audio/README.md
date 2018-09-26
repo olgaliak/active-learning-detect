@@ -22,7 +22,6 @@ If you have a different GPU / OS please go to [official website](https://develop
 To install CUDA drivers for Ubuntu 16.04 for NVIDIA Tesla k80:
 
 ```
-# From NVIDIA website
 $ wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_8.0.44-1_amd64.deb
 $ sudo dpkg -i cuda-repo-ubuntu1604_8.0.44-1_amd64.deb
 $ sudo apt-get update
@@ -57,7 +56,6 @@ To install nvidia-docker and test nvidia-smi:
 ```
 $ sudo apt-get install nvidia-docker2
 $ nvidia-docker run --rm nvidia/cuda nvidia-smi
-
 ```
 
 ### Environment Testing Set Up 
