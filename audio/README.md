@@ -17,9 +17,9 @@ Any reasonably recent version of these packages should work. TensorFlow should b
 
 ### Enabling GPU Device
 
-Installing CUDA drivers for Ubuntu 16.04 for NVidia Tesla K80. If you have a different GPU / OS please go to [official website](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1710/x86_64/) and found your driver.
+If you have a different GPU / OS please go to [official website](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1710/x86_64/) and find the appropriate driver.
 
-To install NVIDIA drivers
+To install CUDA drivers for Ubuntu 16.04 for NVIDIA Tesla k80:
 
 ```
 # From NVIDIA website
@@ -29,7 +29,30 @@ $ sudo apt-get update
 $ sudo apt-get -f install
 $ sudo apt-get install cuda
 ```
-To install nvidia-docker and test nvidia-smi
+
+nvidia-smi is NVIDIA's System Management Interface. It provides a command line utility that allows monitoring and management capabilities for NVIDIA devices. Example output:
+
+```
+Wed Sep 26 21:17:23 2018
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 410.48                 Driver Version: 410.48                    |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|===============================+======================+======================|
+|   0  Tesla K80           Off  | 00006DE9:00:00.0 Off |                    0 |
+| N/A   40C    P0    83W / 149W |      0MiB / 11441MiB |      1%      Default |
++-------------------------------+----------------------+----------------------+
+
++-----------------------------------------------------------------------------+
+| Processes:                                                       GPU Memory |
+|  GPU       PID   Type   Process name                             Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+```
+
+To install nvidia-docker and test nvidia-smi:
 
 ```
 $ sudo apt-get install nvidia-docker2
