@@ -61,7 +61,7 @@ Example:
 3) pip install azure-blob packages: azure.storage.blob
 
 ### Tagger machine(s) (could be same as Linux box or separate boxes\vms)
-1) Have Python 3.5 up and running.
+1) Have Python 3.6 up and running.
 2) Pip install azure-blob packages: azure.storage.blob
 3) Clone this repo, copy  updated config.ini from Model re-training box (as it has Azure Blob Storage and other generic info already).
 4) Update  _config.ini_ values for _# Tagger Machine_ section:    
