@@ -11,9 +11,31 @@ Any reasonably recent version of these packages should work. TensorFlow should b
 * Numpy - 1.14.5
 * Scipy - 1.1.0
 * Resampy - 0.2.1
-* Tensorflow - 1.10.0
+* Tensorflow-GPU - 1.10.0
 * Six - 1.11.0
 
+
+### Enabling GPU Device
+
+Installing CUDA drivers for Ubuntu 16.04 for NVidia Tesla K80. If you have a different GPU / OS please go to official website and found your driver.
+
+To install NVidia drivers
+
+```
+# From NVIDIA website
+$ wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_8.0.44-1_amd64.deb
+$ sudo dpkg -i cuda-repo-ubuntu1604_8.0.44-1_amd64.deb
+$ sudo apt-get update
+$ sudo apt-get -f install
+$ sudo apt-get install cuda
+```
+To install nvidia-docker and test nvidia-smi
+
+```
+$ sudo apt-get install nvidia-docker2
+$ nvidia-docker run --rm nvidia/cuda nvidia-smi
+
+```
 
 ### Environment Testing Set Up 
 
