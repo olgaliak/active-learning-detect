@@ -19,6 +19,12 @@ Any reasonably recent version of these packages should work. TensorFlow should b
 
 If you have a different GPU / OS please go to [official website](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1710/x86_64/) and find the appropriate driver.
 
+This command can help with find information on your GPU:
+
+```
+sudo lshw -C display
+```
+
 First, install the latest version of Docker:
 
 ```
