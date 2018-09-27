@@ -19,6 +19,23 @@ Any reasonably recent version of these packages should work. TensorFlow should b
 
 If you have a different GPU / OS please go to [official website](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1710/x86_64/) and find the appropriate driver.
 
+Install Docker
+```
+$ sudo apt-get update
+$ sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common
+$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+$ sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+$ sudo apt-get update
+$ sudo apt-get install docker-ce
+```
+
 To install CUDA drivers for Ubuntu 16.04 for NVIDIA Tesla k80:
 
 ```
@@ -29,7 +46,15 @@ $ sudo apt-get -f install
 $ sudo apt-get install cuda
 ```
 
-nvidia-smi is NVIDIA's System Management Interface. It provides a command line utility that allows monitoring and management capabilities for NVIDIA devices. Example output:
+nvidia-smi is NVIDIA's System Management Interface. It provides a command line utility that allows monitoring and management capabilities for NVIDIA devices. 
+
+To install nvidia-docker and test nvidia-smi:
+
+```
+$ sudo apt-get install nvidia-docker2
+$ nvidia-docker run --rm nvidia/cuda nvidia-smi
+```
+Example output:
 
 ```
 Wed Sep 26 21:17:23 2018
@@ -51,12 +76,6 @@ Wed Sep 26 21:17:23 2018
 +-----------------------------------------------------------------------------+
 ```
 
-To install nvidia-docker and test nvidia-smi:
-
-```
-$ sudo apt-get install nvidia-docker2
-$ nvidia-docker run --rm nvidia/cuda nvidia-smi
-```
 
 ### Environment Testing Set Up 
 
