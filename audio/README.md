@@ -60,6 +60,9 @@ To install nvidia-docker and test nvidia-smi:
 ```
 $ sudo apt-get install nvidia-docker2
 $ nvidia-docker run --rm nvidia/cuda nvidia-smi
+
+*NOTE: A VM restart may be required for packages to be fully installed.
+
 ```
 Example output:
 
