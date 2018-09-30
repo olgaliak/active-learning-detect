@@ -113,7 +113,4 @@ input/
 weights/*.h5
 models/*.h5
 
-# csv files
-*.csv
-
 .DS_Store
