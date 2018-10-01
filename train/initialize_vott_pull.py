@@ -20,13 +20,13 @@ def select_jsons(image_directory, user_folders, classes, csv_filename, map_filen
     with open(csv_filename, 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         if user_folders:
-            csv_writer.writerow(["filename","class","xmin","xmax","ymin","ymax","height","width","folder","confidence"])
+            csv_writer.writerow(["filename","class","xmin","xmax","ymin","ymax","height","width","folder","box_confidence", "image_confidence"])
             for (filename,true_height,true_width),folder in all_images:
-                csv_writer.writerow([filename,"NULL",0,0,0,0,true_height,true_width,folder,0])
+                csv_writer.writerow([filename,"NULL",0,0,0,0,true_height,true_width,folder,0,0])
         else:
-            csv_writer.writerow(["filename","class","xmin","xmax","ymin","ymax","height","width","confidence"])
-            for (filename,true_height,true_width),folder in all_images:
-                csv_writer.writerow([filename,"NULL",0,0,0,0,true_height,true_width,folder,0])
+            csv_writer.writerow(["filename","class","xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"])
+            for filename,true_height,true_width in all_images:
+                csv_writer.writerow([filename,"NULL",0,0,0,0,true_height,true_width,0,0])
 
 if __name__ == "__main__":
     from azure.storage.blob import BlockBlobService

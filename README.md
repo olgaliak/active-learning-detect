@@ -61,7 +61,7 @@ Example:
 3) pip install azure-blob packages: azure.storage.blob
 
 ### Tagger machine(s) (could be same as Linux box or separate boxes\vms)
-1) Have Python 3.5 up and running.
+1) Have Python 3.6 up and running.
 2) Pip install azure-blob packages: azure.storage.blob
 3) Clone this repo, copy  updated config.ini from Model re-training box (as it has Azure Blob Storage and other generic info already).
 4) Update  _config.ini_ values for _# Tagger Machine_ section:    
@@ -81,13 +81,14 @@ This step will:
 This is the snapshot of images file names that need tagging (labeling).  As human annotators make progress on labeling data the list will get smaller and smaller.
 
 ### Tagger machine(s)
-1) Start each "phase" with downloading images to label (or to review pre-labeled images).  
+1) Make sure that the tagging_location is empty.
+2) Start each "phase" with downloading images to label (or to review pre-labeled images).  
 Sample cmd below requests 40 images for tagging:  
 `D:\repo\active-learning-detect\tag>python download_vott_json.py 40 ..\config.ini`  
 This step will create new version of totag_xyz.csv on blob storage that will have 40 images excluded from the list.  
 File tagging_abc.csv will hold list of 40 images being tagged.
-2) Start [VOTT](https://github.com/Microsoft/VoTT) , load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
-3) Once done with labeling push results back to central storage:  
+3) Start [VOTT](https://github.com/Microsoft/VoTT) , load the folder for labeling\review (in my case it will be `D:\temp\NewTag\images`)
+4) Once done with labeling push results back to central storage:  
  `D:\repo\active-learning-detect\tag>python upload_vott_json.py ..\config.ini`
 This step will push tagged_123.csv to blob storage: this file contains actual bounding boxes coordinates for every image.  
 Tagging_abc.csv will contain list of files that are "work in progress" -- the ones to be tagged soon.
@@ -96,11 +97,20 @@ Tagging_abc.csv will contain list of files that are "work in progress" -- the on
 Now model can be trained.
 
 ### Model(re)training on Linux box
+Before your first time running the model, and at any later time if you would like to repartition the test set, run:
+
+`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini`
+
+This script will take all the tagged data and split some of it into a test set, which will not be trained/validated on and will then be use by evalution code to return mAP values.
+
 Run bash script:  
-`~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`  
+`~/repos/models/research/active-learning-detect/train$ . ./active_learning_train.sh  ../config.ini`
+
 This script will kick of training based on available labeled data.  
-Model will evaluated on dynamic validation set and perf numbers will be saved in blob storage (performance.csv).
-Latest totag.csv will have predictions for all available images made of the newly trained model -- boundding box locations that could be used by human annotator as a starter.
+
+Model will evaluated on test set and perf numbers will be saved in blob storage (performance.csv).
+
+Latest totag.csv will have predictions for all available images made of the newly trained model -- bounding box locations that could be used by human annotator as a starter.
 
 ### Reviewing of pre-labeled results (on Tagger machine)
 Human annotator(s) deletes any leftovers from previous predictions (csv files in active-learning-detect\tag, image dirs) and runs goes again sequence of:
@@ -111,11 +121,35 @@ Human annotator(s) deletes any leftovers from previous predictions (csv files in
 Training cycle can now be repeated on bigger training set and dataset with higher quality of pre-labeled bounding boxes could be obtained. 
 
 
+# Using Custom Vision service for training
+
+The Custom Vision service can be used instead of Tensorflow in case you do not have access to an Azure Data Science VM or other GPU-enabled machine. The steps for Custom Vision are pretty similar to those for Tensorflow, although the training step is slightly different:
+
+### Model (re)training on Custom Vision
+If you would like to repartition the test set, run:
+
+`~/repos/models/research/active-learning-detect/train$ . ./repartition_test_set_script.sh  ../config.ini`
+
+This script will take all the tagged data and split some of it into a test set, which will not be trained/validated on and will then be use by evalution code to return mAP values.
+
+To train the model:  
+python cv_train.py ../config.ini
+
+This python script will train a custom vision model based on available labeled data.  
+
+Model will evaluated on test set and perf numbers will be saved in blob storage (performance.csv).
+
+Latest totag.csv will have predictions for all available images made of the newly trained model -- bounding box locations that could be used by human annotator as a starter.
+
+
 # Sample dataset
 I'm using wood knots dataset mentioned in this [blog](http://blog.revolutionanalytics.com/2017/09/wood-knots.html) 
 Here is [link](https://olgaliakrepo.blob.core.windows.net/woodknots/board_images_png.zip) to the dataset: zip file with 800+ board png images.
  
+# Custom Vision HttpOperationError 'Bad Request'
 
-
-
-
+The current custom vision SDK is in preview mode, and one of the limitations is that an error while training does not return an error message, just a generic 'Bad Request' response. Common reasons for this error include:
+1) Having a tag with less than 15 images. Custom Vision requires a minimum of 15 images per tag and will throw an error if it finds any tag with less than that many.
+2) Having a tag out of bounds. If for some reason you attempt to add a tag through the API which is out of bounds, it will accept the request but will throw an error while training.
+3) No new images since last training session. If you try to train without adding additional images Custom Vision will return a bad request exception.
+The best way to debug these is to go into the Custom Vision website (customvision.ai) and click the train button, which should then tell you what the error was.

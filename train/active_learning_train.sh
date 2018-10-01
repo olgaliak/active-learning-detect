@@ -13,7 +13,7 @@ python ${python_file_directory}/update_blob_folder.py cur_config.ini
 echo "Creating TF Record"
 python ${python_file_directory}/convert_tf_record.py cur_config.ini
 # Download tf model if it doesn't exist
-if [ ! -d "$download_location" ]; then
+if [ ! -d "$download_location/${model_name}" ]; then
   mkdir -p $download_location
   curl $tf_url --create-dirs -o ${download_location}/${model_name}.tar.gz
   tar -xzf ${download_location}/${model_name}.tar.gz -C $download_location
@@ -35,7 +35,7 @@ sed -i "s/$num_classes_marker[[:space:]]*[[:digit:]]*/$num_classes_marker $num_c
 # Train model on TFRecord
 echo "Training model"
 rm -rf $train_dir
-python ${tf_location}/train.py --train_dir=$train_dir --pipeline_config_path=$temp_pipeline --logtostderr
+python ${tf_location_legacy}/train.py --train_dir=$train_dir --pipeline_config_path=$temp_pipeline --logtostderr
 # Export inference graph of model
 echo "Exporting inference graph"
 rm -rf $inference_output_dir
@@ -45,9 +45,9 @@ python ${tf_location}/export_inference_graph.py --input_type "image_tensor" --pi
 echo "Creating new predictions"
 python ${python_file_directory}/create_predictions.py cur_config.ini
 echo "Calculating performance"
-python ${python_file_directory}/validation.py cur_config.ini
+python ${python_file_directory}/map_validation.py cur_config.ini
 # Rename predictions and inference graph based on timestamp and upload
 echo "Uploading new data"
-az storage blob upload --container-name activelearninglabels --file ${inference_output_dir}/frozen_inference_graph.pb --name model_$(date +%s).pb  --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
-az storage blob upload --container-name activelearninglabels --file $untagged_output --name totag_$(date +%s).csv --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
-az storage blob upload --container-name activelearninglabels --file $validation_output --name performance_$(date +%s).txt --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
+az storage blob upload --container-name $label_container_name --file ${inference_output_dir}/frozen_inference_graph.pb --name model_$(date +%s).pb  --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
+az storage blob upload --container-name $label_container_name --file $untagged_output --name totag_$(date +%s).csv --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
+az storage blob upload --container-name $label_container_name --file $validation_output --name performance_$(date +%s).csv --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY
