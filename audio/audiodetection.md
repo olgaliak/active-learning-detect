@@ -1,8 +1,12 @@
 # Audio Detection using Audioset & Audio Analysis
 
+## Active Learning + Audio Detection
+
+The detection of audio and classification of sounds are currently green field research areas with limited resources and best practices. The labeling of audio, augmentation and model generation are essential for building Computer Audio Detection projects. Recent strides in the space such as the development of large scale datasets with labeled sound clips (Audioset, Freesound) and the classification models around those datasets are providing the ML space best practice parity with common Computer Vision and image labeling techniques. In this section of Active Learning we will explore beneficial practices, and ML pipeline techniques around audio augmentation, audio labeling, & sound classification to automate the detection of sounds for Human annotators. To begin, we leverage the Audioset Dataset to build base line tensorflow models to detect sounds in our custom dataset. 
+
 ## Environment Setup
 
-Any reasonably recent version of these packages should work. TensorFlow should be at least version 1.0. We have tested with Python 2.7.6 and 3.4.3 on an Ubuntu-like system with NumPy v1.13.1, SciPy v0.19.1, resampy v0.1.5, TensorFlow v1.2.1, and Six v1.10.0.
+Use a local machine or a Data Science VM with GPUs. Our team leveraged the [Azure Data Science Virtual Machine](https://azure.microsoft.com/en-us/services/virtual-machines/data-science-virtual-machines/) from the Azure Marketplace. Any reasonably recent version of these packages should work. TensorFlow should be at least version 1.0. We have tested with Python 2.7.6 and 3.4.3 on an Ubuntu-like system with NumPy v1.13.1, SciPy v0.19.1, resampy v0.1.5, TensorFlow v1.2.1, and Six v1.10.0.
 
 
 **Azure Data Science VM (Linux)**
@@ -59,11 +63,10 @@ To install nvidia-docker and test nvidia-smi:
 
 ```
 $ sudo apt-get install nvidia-docker2
-$ nvidia-docker run --rm nvidia/cuda nvidia-smi
-
-*NOTE: A VM restart may be required for packages to be fully installed.
-
+$ sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
 ```
+> **NOTE**: A VM restart may be required for packages to be fully installed.
+
 Example output:
 
 ```
@@ -113,6 +116,7 @@ $ sudo pip install resampy tensorflow six
 $ git clone https://github.com/tensorflow/models.git
 $ cd models/research/audioset
 # Download data files into same directory as code.
+# These files are used for the VGG inferencing to convert audio wav files to a spectogram supported by the Audioset model we generate.
 $ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 $ curl -O https://storage.googleapis.com/audioset/vggish_pca_params.npz
 # Installation ready, let's test it.
@@ -123,10 +127,13 @@ $ python vggish_smoke_test.py
 
 ## Custom Audio Conversion
 
-Required Input  
+Here we will take a custom wav file and extract the audio feature embeddings through a VGGish inference. VGGish is the 128-dimension embeddings specifically found in Audioset which was trained on millions of youtube videos. A tensorflow record with the embeddings are outputted to a directory and you can use this to pass into your own model. For more on VGGish check out this [paper](https://arxiv.org/pdf/1609.09430.pdf). Here's what you need:
+
 -  A WAV file (assumed to contain signed 16-bit PCM samples) 
-    - This wav file is converted into log mel spectrogram examples, feed into VGGish, the raw embedding output is whitened and quantized, and the postprocessed embeddings are optionally written in a SequenceExample to a TFRecord file (using the same format as the embedding features released in AudioSet).
-	- Size of the file - The VGG inference script  "Converts audio waveform into an array of examples for VGGish."
+
+    * This wav file is converted into log mel spectrogram examples, fed into VGGish, the raw embedding output is whitened and quantized, and the postprocessed embeddings are optionally written in a SequenceExample to a TFRecord file (using the same format as the embedding features released in AudioSet).
+	* Size of the file - The VGG inference script Converts audio waveform into an array of examples for VGGish. So whichever size your training data set is based on. For audioset this is 10 seconds.
+
 	    - Input: data: np.array of either one dimension (mono) or two dimensions(multi-channel, with the outer dimension representing channels). Each sample is generally expected to lie in the range [-1.0, +1.0], although this is not required.
 
 		- Output: 3-D np.array of shape [num_examples, num_frames, num_bands] which represents a sequence of examples, each of which contains a patch of log mel spectrogram, covering num_frames frames of audio and num_bands mel frequency bands, where the frame length is vggish_params.STFT_HOP_LENGTH_SECONDS.
@@ -150,8 +157,8 @@ Required Input
 | Clip | Online-Converter| No-Change | No-Change   | Small    | Yes      | Yes    |
 | Clip2 | Online-Converter| No-Change | No-Change   | Small     | Yes      | Yes    |
 
-> Upload to a blob & Curl your files - 
-`$ curl -O https://rtwrt.blob.core.windows.net/post5-audioset/samples/sample1_16bit_PCM_signed_smallendian.wav
+>  Upload to a cloud storage like Azure Blob & curl your files:
+> `curl -O https://rtwrt.blob.core.windows.net/post5-audioset/samples/sample1_16bit_PCM_signed_smallendian.wav` 
 
 ## VGG Conversion Tester
 
@@ -162,167 +169,7 @@ Use vggish_inference_demo.py to create a VGG analysis of your custom wave file i
                                     --checkpoint /path/to/model/checkpoint \
                                     --pca_params /path/to/pca/params`
                                     
-> Due to an outdated version of audioset leveraging the video_id parameter replace your vgg_inference_demo.py with the one provided below. We added a context property that appends a video_id property based on the name of the wav file inputted.
-
-``` python
-# Copyright 2017 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-r"""A simple demonstration of running VGGish in inference mode.
-
-This is intended as a toy example that demonstrates how the various building
-blocks (feature extraction, model definition and loading, postprocessing) work
-together in an inference context.
-
-A WAV file (assumed to contain signed 16-bit PCM samples) is read in, converted
-into log mel spectrogram examples, fed into VGGish, the raw embedding output is
-whitened and quantized, and the postprocessed embeddings are optionally written
-in a SequenceExample to a TFRecord file (using the same format as the embedding
-features released in AudioSet).
-
-Usage:
-  # Run a WAV file through the model and print the embeddings. The model
-  # checkpoint is loaded from vggish_model.ckpt and the PCA parameters are
-  # loaded from vggish_pca_params.npz in the current directory.
-  $ python vggish_inference_demo.py --wav_file /path/to/a/wav/file
-
-  # Run a WAV file through the model and also write the embeddings to
-  # a TFRecord file. The model checkpoint and PCA parameters are explicitly
-  # passed in as well.
-  $ python vggish_inference_demo.py --wav_file /path/to/a/wav/file \
-                                    --tfrecord_file /path/to/tfrecord/file \
-                                    --checkpoint /path/to/model/checkpoint \
-                                    --pca_params /path/to/pca/params
-
-  # Run a built-in input (a sine wav) through the model and print the
-  # embeddings. Associated model files are read from the current directory.
-  $ python vggish_inference_demo.py
-"""
-
-from __future__ import print_function
-
-import numpy as np
-from scipy.io import wavfile
-import six
-import tensorflow as tf
-
-import vggish_input
-import vggish_params
-import vggish_postprocess
-import vggish_slim
-
-flags = tf.app.flags
-
-flags.DEFINE_string(
-    'wav_file', None,
-    'Path to a wav file. Should contain signed 16-bit PCM samples. '
-    'If none is provided, a synthetic sound is used.')
-
-flags.DEFINE_string(
-    'checkpoint', 'vggish_model.ckpt',
-    'Path to the VGGish checkpoint file.')
-
-flags.DEFINE_string(
-    'pca_params', 'vggish_pca_params.npz',
-    'Path to the VGGish PCA parameters file.')
-
-flags.DEFINE_string(
-    'tfrecord_file', None,
-    'Path to a TFRecord file where embeddings will be written.')
-
-FLAGS = flags.FLAGS
-
-
-def main(_):
-    # In this simple example, we run the examples from a single audio file through
-    # the model. If none is provided, we generate a synthetic input.
-    if FLAGS.wav_file:
-        wav_file = FLAGS.wav_file
-    else:
-        # Write a WAV of a sine wav into an in-memory file object.
-        num_secs = 5
-        freq = 1000
-        sr = 44100
-        t = np.linspace(0, num_secs, int(num_secs * sr))
-        x = np.sin(2 * np.pi * freq * t)
-        # Convert to signed 16-bit samples.
-        samples = np.clip(x * 32768, -32768, 32767).astype(np.int16)
-        wav_file = six.BytesIO()
-        wavfile.write(wav_file, sr, samples)
-        wav_file.seek(0)
-    examples_batch = vggish_input.wavfile_to_examples(wav_file)
-    print(examples_batch)
-
-    # Prepare a postprocessor to munge the model embeddings.
-    pproc = vggish_postprocess.Postprocessor(FLAGS.pca_params)
-
-    # If needed, prepare a record writer to store the postprocessed embeddings.
-    writer = tf.python_io.TFRecordWriter(
-        FLAGS.tfrecord_file) if FLAGS.tfrecord_file else None
-
-    with tf.Graph().as_default(), tf.Session() as sess:
-        # Define the model in inference mode, load the checkpoint, and
-        # locate input and output tensors.
-        vggish_slim.define_vggish_slim(training=False)
-        vggish_slim.load_vggish_slim_checkpoint(sess, FLAGS.checkpoint)
-        features_tensor = sess.graph.get_tensor_by_name(
-            vggish_params.INPUT_TENSOR_NAME)
-        embedding_tensor = sess.graph.get_tensor_by_name(
-            vggish_params.OUTPUT_TENSOR_NAME)
-
-        # Run inference and postprocessing.
-        [embedding_batch] = sess.run([embedding_tensor],
-                                     feed_dict={features_tensor: examples_batch})
-        print(embedding_batch)
-        postprocessed_batch = pproc.postprocess(embedding_batch)
-        print(postprocessed_batch)
-
-        # Write the postprocessed embeddings as a SequenceExample, in a similar
-        # format as the features released in AudioSet. Each row of the batch of
-        # embeddings corresponds to roughly a second of audio (96 10ms frames), and
-        # the rows are written as a sequence of bytes-valued features, where each
-        # feature value contains the 128 bytes of the whitened quantized embedding.
-        seq_example = tf.train.SequenceExample(
-            context=tf.train.Features(feature={
-                'video_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[wav_file.encode()]))
-            }),
-            feature_lists=tf.train.FeatureLists(
-                feature_list={
-                    vggish_params.AUDIO_EMBEDDING_FEATURE_NAME:
-                        tf.train.FeatureList(
-                            feature=[
-                                tf.train.Feature(
-                                    bytes_list=tf.train.BytesList(
-                                        value=[embedding.tobytes()]))
-                                for embedding in postprocessed_batch
-                            ]
-                        )
-                }
-            )
-        )
-        print(seq_example)
-        if writer:
-            writer.write(seq_example.SerializeToString())
-
-    if writer:
-        writer.close()
-
-
-if __name__ == '__main__':
-    tf.app.run()
-```
+> Due to an outdated version of audioset leveraging the video_id parameter, replace your file with the [vgg_inference_demo.py](vgg_inference_demo.py) we provided. We added a context property that appends a video_id property based on the name of the wav file inputted.
 
 
 ## Selection of model:
@@ -355,11 +202,11 @@ Firearm
 
 ## Dataset Ingestion & Sample Models
 
-1. Download the Audioset in a tar file and unpack into a features directory.
+1. Download the Audioset feature embeddings dataset in a tar file and unpack the tar.
     - Download using `curl -O storage.googleapis.com/us_audioset/youtube_corpus/v1/features/features.tar.gz`
     - Unpack using `tar -xzf features.tar.gz`
-2. Clone the youtube8m repository - https://github.com/google/youtube-8m
-> **Hackweek Learnings**: Audioset using outdated version of the youtube 8m model templates and requires a changed in the readers.py file. Change all instances of `id` to `video_id`.
+2. Clone the youtube8m repository - `git clone https://github.com/google/youtube-8m.git`
+> **Learnings**: Audioset uses an outdated version of the youtube 8m model templates and requires a change in the readers.py file. Our team changed all instances of `id` to `video_id` and also edited the hard coded number fo classes from 3826 to 527 (The current number of Audioset class). Refer to [readers.py](readers.py)
 
 ## Building a Model
 
@@ -371,10 +218,10 @@ Now that you have the Youtube-8m model samples and the audioset features to trai
 - `--base_learning_rate` is set to 0.001 since we are using an LSTM Model
 - `--num_epochs` is an arbitrary number for the amount of times the model will be trained on the dataset. Ideally we would like to have a 0.01 loss so train the model long enough so the loss value is relatively close to this. *try not to overfit the model*
 
-`python youtube-8m/train.py --frame_features --model=LstmModel --feature_names=audio_embedding --feature_sizes=128 --train_data_pattern=features/audioset_v1_embeddings/bal_train/*.tfrecord --train_dir model_new/dir --start_new_model --base_learning_rate=0.001 --num_epochs=1500`
+`python youtube-8m/train.py --frame_features --model=LstmModel --feature_names=audio_embedding --feature_sizes=128 --train_data_pattern=audioset_v1_embeddings/bal_train/*.tfrecord --train_dir model_new/dir --start_new_model --base_learning_rate=0.001 --num_epochs=1500`
 #### Tracking Training
 * You can use **Nohup** to write the console to a txt and monitor the loss
-    * Use `nohup python youtube-8m/train.py --frame_features --model=LstmModel --feature_names=audio_embedding --feature_sizes=128 --train_data_pattern=features/audioset_v1_embeddings/bal_train/*.tfrecord --train_dir model_new/dir --start_new_model --base_learning_rate=0.001 --num_epochs=1500 &`
+    * Use `nohup python youtube-8m/train.py --frame_features --model=LstmModel --feature_names=audio_embedding --feature_sizes=128 --train_data_pattern=audioset_v1_embeddings/bal_train/*.tfrecord --train_dir model_new/dir --start_new_model --base_learning_rate=0.001 --num_epochs=1500 &`
     * Then open another terminal and monitor the loss using `tail -f nohup.out`
 * You can also use **Tensorboard** to monitor the model loss and other metrics using a UI.
     * In the portal add port `6006` as an inbound rule for your network security group that you VM is configured to.
@@ -382,7 +229,8 @@ Now that you have the Youtube-8m model samples and the audioset features to trai
 
 ### Evalute
 
-We will now use the binaries for evaluating Tensorflow models on the YouTube-8M dataset with audioset embeddings. Run this command once or for an arbitrary time where:
+You can now use the binaries for evaluating Tensorflow models on the YouTube-8M dataset with audioset embeddings. Run this command once or for an arbitrary time:
+
 * `--train_data_pattern` is the path to the eval_train tensorflor wecords for the audtioset embeddings
 * `--train_dir` is the path to the previousl created directory for your model
 
@@ -390,7 +238,7 @@ We will now use the binaries for evaluating Tensorflow models on the YouTube-8M 
 
 ### Inference
 
-Now that we have a working model we will run 3 commands to evaluate how our model scores audio based on the audio embedding features.
+Now that you have a working model you can run 3 commands to evaluate how our model scores audio based on the audio embedding features.
 
 First we'll run an inference on our bal_train dataset. These are audio records that our model was built using. Run the command where:
 - `--top_k` is the top 3 labels tagged by the model
@@ -399,5 +247,5 @@ First we'll run an inference on our bal_train dataset. These are audio records t
 
 `python youtube-8m/inference.py --output_file Bal_SamplePredictions.csv --input_data_pattern=features/audioset_v1_embeddings/bal_train/a*.tfrecord --train_dir model_new/dir --top_k=3`
 
-With the output csv file use [Bal_Train_Segments.csv](http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv) to validate that the video files were correctly labeled. Repeat this inference step replacing the `input_data_pattern` with the Unbalance_Data and then with the output tfrecord that is create with a custom wav file.
+With the output csv file use [Bal_Train_Segments.csv](http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv) to validate that the video files were correctly labeled. Repeat this inference step replacing the `input_data_pattern` with the Unbalance_Data and then with the output tfrecord that is created with a custom wav file.
 > The Balance_Train dataset scores should be very accurate since we used this data to train the LstmModel. The Unbalnced_Train dataset will be a bit less accurate and your custom audio tfrecord for a user wav file will vary based on a variety of variables that will need to be further explored.
