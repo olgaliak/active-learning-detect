@@ -1,4 +1,6 @@
 # Active learning + object detection
+[![Build Status](https://dev.azure.com/epicstuff/active%20learning/_apis/build/status/mcurmei627.active-learning-detect)](https://dev.azure.com/epicstuff/active%20learning/_build/latest?definitionId=2)
+
 Labeling images for object detection is commonly required task to get started with Computer Vision related project.
 Good news that you do not have to label all images  (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process.
 We will use Transfer Learning and Active Learning as core Machine Learning  components of the pipeline.
