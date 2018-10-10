@@ -1,6 +1,13 @@
 import argparse
 
-from operations import init, download, upload, abandon
+from operations import (
+    init,
+    download,
+    upload,
+    abandon,
+    LOWER_LIMIT,
+    UPPER_LIMIT
+)
 
 if __name__ == "__main__":
 
@@ -15,7 +22,9 @@ if __name__ == "__main__":
         'operation',
         choices=['init', 'download', 'upload', 'abandon']
     )
-    parser.add_argument('-n', '--num-images')
+
+    parser.add_argument('-n', '--num-images', type=int)
+
     parser.add_argument('-c', '--config')
 
     args = parser.parse_args()
