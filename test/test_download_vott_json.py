@@ -39,14 +39,23 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
 
     def test_get_top_rows(self):
         N_ROWS = 3
-        N_FILES = 2
-        all_files = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders ,
+        N_FILES = 3
+        EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
+                     ['st1840.png', 'knot', '0.7297609', '0.7755673', '0.62443626', '0.6670296', '512', '488', 'board_images_png', '0.986', '0.986'],
+                     ['st1840.png', 'defect', '0.76513', '0.9952971', '0.6075407', '0.6546806', '512', '488', 'board_images_png', '0.986', '0.986']],
+                    [['st1578.png', 'knot', '0.594302', '0.6663906', '0.35276932', '0.43525606', '512', '488', 'board_images_png', '0.98448783', '0.98448783']],
+                    [['st1026.png', 'knot', '0.2674017', '0.35383838', '0.39859554', '0.50976944', '512', '488', 'board_images_png', '0.9884343', '0.96366304'],
+                     ['st1026.png', 'knot', '0.69417506', '0.744075', '0.34379873', '0.39051458', '512', '488', 'board_images_png', '0.97863936', '0.96366304'],
+                     ['st1026.png', 'defect', '0.70078284', '0.9907891', '0.5857268', '0.6470487', '512', '488', 'board_images_png', '0.96366304', '0.96366304']]]
+
+        all_rows = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders ,
                          self.pick_max, self.tag_names, self.ideal_class_balance)
-        self.assertEqual(len(all_files), N_FILES)
+        self.assertEqual(len(all_rows), N_FILES, 'number of rows')
+        self.assertEqual(all_rows, EXPECTED, 'row values')
 
     def test_create_vott_json(self):
         N_ROWS = 3
-        N_FILES = 2
+        N_FILES = 3
         FOLDER_NAME = "board_images_png"
         create_vott_json(self.csv_file_loc,  N_ROWS,  self.user_folders ,
                          self.pick_max, "",
