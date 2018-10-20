@@ -27,8 +27,8 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
 
         self.csv_file_loc.mkdir(parents=True, exist_ok=True)
-        self.ideal_class_balance = self.config_file["ideal_class_balance"].split(",")
-        self. max_tags_per_pixel = self.config_file.get("max_tags_per_pixel")
+        #self.ideal_class_balance = self.config_file["ideal_class_balance"].split(",")
+        self.max_tags_per_pixel = self.config_file.get("max_tags_per_pixel")
         self.tag_names = self.config_file["classes"].split(",")
         self.user_folders = self.config_file["user_folders"] == "True"
         self.pick_max  = self.config_file["pick_max"] == "True"
@@ -39,21 +39,20 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
 
     def test_get_top_rows(self):
         N_ROWS = 3
-        N_FILES = 2
+        N_FILES = 3
         all_files = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders ,
-                         self.pick_max, self.tag_names, self.ideal_class_balance)
+                         self.pick_max)
         self.assertEqual(len(all_files), N_FILES)
 
     def test_create_vott_json(self):
         N_ROWS = 3
-        N_FILES = 2
+        N_FILES = 3
         FOLDER_NAME = "board_images_png"
         create_vott_json(self.csv_file_loc,  N_ROWS,  self.user_folders ,
                          self.pick_max, "",
                          self.tagging_location, blob_credentials=None,
                          tag_names= self.tag_names,
-                         max_tags_per_pixel=self. max_tags_per_pixel ,
-                         ideal_class_balance=self.ideal_class_balance)
+                         max_tags_per_pixel=self. max_tags_per_pixel)
 
         res_folder = os.path.join(self.tagging_location, FOLDER_NAME)
         res_immages_cnt = sum([len(files) for r, d, files in os.walk(res_folder)])
