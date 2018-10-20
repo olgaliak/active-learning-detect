@@ -95,11 +95,11 @@ if __name__ == "__main__":
     csv_file_loc = Path(config_file["tagging_location"])
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
     if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagged.csv"))
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], csv_file_loc/"tagged.csv")
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], csv_file_loc/"tagging.csv")
     #TODO: Ensure this parses folder recursively when given tagging location. Remove the .json part
     select_jsons(config_file["tagging_location"],config_file["user_folders"]=="True",csv_file_loc)
-    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagged",int(time.time() * 1000),"csv"), str(csv_file_loc/"tagged.csv"))
-    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), str(csv_file_loc/"tagging.csv"))
+    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagged",int(time.time() * 1000),"csv"), csv_file_loc/"tagged.csv")
+    block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), csv_file_loc/"tagging.csv")

@@ -58,9 +58,7 @@ This will include cloning of https://github.com/tensorflow/models. (On my machin
  _"python_file_directory"_ config value should point to the _"train"_ scripts from this project.
 Example:  
 `python_file_directory=/home/olgali/repos/models/research/active-learning-detect/train`
-4) pip install azure.storage.blob   
- pip install opencv-python  
- pip install pandas
+3) pip install azure-blob packages: azure.storage.blob
 
 ### Tagger machine(s) (could be same as Linux box or separate boxes\vms)
 1) Have Python 3.6 up and running.
