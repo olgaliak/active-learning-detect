@@ -9,6 +9,7 @@ import random
 import colorsys
 import numpy as np
 from io import StringIO
+from math import isclose
 
 CONFIDENCE_LOCATION = -1
 TAG_CONFIDENCE_LOCATION = -2
@@ -137,6 +138,7 @@ def prepare_per_class_dict(all_files_per_folder, class_balances_cnt, tag_names):
 
 
 def parse_class_balance_setting(config_value, expected_cnt):
+    print("Ideal class balance (from config):", config_value)
     if config_value is None:
         return  None
     arr_np = np.genfromtxt(StringIO(config_value), dtype=float, delimiter=',', loose=True)
@@ -150,13 +152,16 @@ def parse_class_balance_setting(config_value, expected_cnt):
             return None
 
         s = np.sum(arr_np)
-        if s == 1:
+        if  isclose(s, 1, abs_tol=0.01):
             return arr_np
         else:
             print("Sum of balance settings {0} should add up to 1: {1}".format(config_value, s) )
 
 
 def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
+    #Add class for background
+    if "NULL" not in tag_names:
+        tag_names = tag_names + ["NULL"]
     ideal_class_balance = parse_class_balance_setting(config_class_balance, len(tag_names))
 
     with (file_location/"totag.csv").open(mode='r') as file:

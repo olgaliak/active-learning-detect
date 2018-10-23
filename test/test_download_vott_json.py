@@ -27,7 +27,6 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
 
         self.csv_file_loc.mkdir(parents=True, exist_ok=True)
-        self.ideal_class_balance = self.config_file["ideal_class_balance"]
         self. max_tags_per_pixel = self.config_file.get("max_tags_per_pixel")
         self.tag_names = self.config_file["classes"].split(",")
         self.user_folders = self.config_file["user_folders"] == "True"
@@ -48,8 +47,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
                      ['st1026.png', 'knot', '0.69417506', '0.744075', '0.34379873', '0.39051458', '512', '488', 'board_images_png', '0.97863936', '0.96366304'],
                      ['st1026.png', 'defect', '0.70078284', '0.9907891', '0.5857268', '0.6470487', '512', '488', 'board_images_png', '0.96366304', '0.96366304']]]
 
+        class_balance = "0.7,0.3,0"
         all_rows = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders ,
-                         self.pick_max, self.tag_names, self.ideal_class_balance)
+                         self.pick_max, self.tag_names, class_balance)
         self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
@@ -118,8 +118,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
                                      ['st1192.png', 'defect', '0.47953823', '0.7499259', '0.5517361', '0.59940904', '512', '488', 'board_images_png', '0.7127546', '0.7127546']]]
 
         pick_max = False
+        class_balance = "0.7,0.3,0"
         all_rows = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders,
-                                pick_max, self.tag_names, self.ideal_class_balance)
+                                pick_max, self.tag_names, class_balance)
         self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
@@ -128,16 +129,39 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         N_ROWS = 3
         N_FILES = 3
         FOLDER_NAME = "board_images_png"
+        class_balance = "0.7,0.3,0"
         create_vott_json(self.csv_file_loc,  N_ROWS,  self.user_folders ,
                          self.pick_max, "",
                          self.tagging_location, blob_credentials=None,
                          tag_names= self.tag_names,
                          max_tags_per_pixel=self. max_tags_per_pixel ,
-                         config_class_balance=self.ideal_class_balance)
+                         config_class_balance=class_balance)
 
         res_folder = os.path.join(self.tagging_location, FOLDER_NAME)
         res_immages_cnt = sum([len(files) for r, d, files in os.walk(res_folder)])
         self.assertEqual(N_FILES, res_immages_cnt)
+
+    def test_get_top_rows_with_bkg(self):
+        N_ROWS = 5
+        N_FILES = 5
+        EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
+                     ['st1840.png', 'knot', '0.7297609', '0.7755673', '0.62443626', '0.6670296', '512', '488', 'board_images_png', '0.986', '0.986'],
+                     ['st1840.png', 'defect', '0.76513', '0.9952971', '0.6075407', '0.6546806', '512', '488', 'board_images_png', '0.986', '0.986']],
+                    [['st1578.png', 'knot', '0.594302', '0.6663906', '0.35276932', '0.43525606', '512', '488', 'board_images_png', '0.98448783', '0.98448783']],
+                    [['st1611.png', 'knot', '0.6326234', '0.7054164', '0.86741334', '0.96444726', '512', '488',
+                      'board_images_png', '0.99616516', '0.9843567'],
+                     ['st1611.png', 'knot', '0.07399843', '0.11282173', '0.32572043', '0.36819047', '512', '488',
+                      'board_images_png', '0.9843567', '0.9843567']],
+                    [['st1026.png', 'knot', '0.2674017', '0.35383838', '0.39859554', '0.50976944', '512', '488', 'board_images_png', '0.9884343', '0.96366304'],
+                     ['st1026.png', 'knot', '0.69417506', '0.744075', '0.34379873', '0.39051458', '512', '488', 'board_images_png', '0.97863936', '0.96366304'],
+                     ['st1026.png', 'defect', '0.70078284', '0.9907891', '0.5857268', '0.6470487', '512', '488', 'board_images_png', '0.96366304', '0.96366304']],
+                    [['st1524.png', 'NULL', '0', '0', '0', '0', '512', '488', 'board_images_png', '0', '0.05']]]
+
+        class_balance = "0.6, 0.29, 0.11"
+        all_rows = get_top_rows(self.csv_file_loc, N_ROWS, self.user_folders ,
+                         self.pick_max, self.tag_names, class_balance)
+        self.assertEqual(len(all_rows), N_FILES, 'number of rows')
+        self.assertEqual(all_rows, EXPECTED, 'raw values')
 
 
 if __name__ == '__main__':
