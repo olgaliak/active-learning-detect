@@ -16,7 +16,12 @@ from operations import (
     STORAGE_SECTION,
     STORAGE_KEY,
     STORAGE_ACCOUNT,
-    STORAGE_CONTAINER
+    STORAGE_CONTAINER,
+    TAGGING_SECTION,
+    TAGGING_LOCATION_KEY,
+    functions_config_section,
+    storage_config_section,
+    tagging_config_section
 )
 
 
@@ -64,31 +69,27 @@ class TestConfig(unittest.TestCase):
                 self._mock_sections([STORAGE_SECTION], {})
             )
 
-    def test_missing_functions_config_values(self):
+    def test_missing_tagging_section(self):
         with self.assertRaises(MissingConfigException):
-            mock_data = self._mock_sections(
-                [FUNCTIONS_SECTION],
-                {}
+            read_config_with_parsed_config(
+                self._mock_sections([FUNCTIONS_SECTION, STORAGE_SECTION], {})
             )
 
-            read_config_with_parsed_config(
-                mock_data
-            )
+    def test_missing_functions_config_values(self):
+        with self.assertRaises(MissingConfigException):
+            functions_config_section({})
 
     def test_missing_storage_config_values(self):
         with self.assertRaises(MissingConfigException):
-            mock_data = self._mock_sections(
-                [STORAGE_SECTION],
-                {}
-            )
+            storage_config_section({})
 
-            read_config_with_parsed_config(
-                mock_data
-            )
+    def test_missing_tagging_config_values(self):
+        with self.assertRaises(MissingConfigException):
+            tagging_config_section({})
 
     def test_acceptable_config(self):
         mock_data = self._mock_sections(
-           [STORAGE_SECTION, FUNCTIONS_SECTION],
+           [STORAGE_SECTION, FUNCTIONS_SECTION, TAGGING_SECTION],
             {
                 STORAGE_SECTION: {
                     STORAGE_KEY: "test",
@@ -98,6 +99,9 @@ class TestConfig(unittest.TestCase):
                 FUNCTIONS_SECTION: {
                     FUNCTIONS_KEY: "test",
                     FUNCTIONS_URL: "test"
+                },
+                TAGGING_SECTION: {
+                    TAGGING_LOCATION_KEY: "test"
                 }
             }
         )
