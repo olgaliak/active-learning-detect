@@ -228,6 +228,8 @@ if __name__ == "__main__":
     import sys
     import os
     # Allow us to import utils
+    print("Parent:")
+    print(Path.cwd().parent)
     config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
@@ -239,6 +241,7 @@ if __name__ == "__main__":
     container_name = config_file["label_container_name"]
     shutil.rmtree(config_file["tagging_location"], ignore_errors=True)
     csv_file_loc = Path(config_file["tagging_location"])
+    #csv_file_loc =  #Path("test_totag.csv")
     csv_file_loc.mkdir(parents=True, exist_ok=True)
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'totag_(.*).csv', blob.name)]
     block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"totag.csv"))

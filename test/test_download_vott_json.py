@@ -33,7 +33,7 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.pick_max  = self.config_file["pick_max"] == "True"
 
     def tearDown(self):
-        #shutil.rmtree(self.tagging_location, ignore_errors=True)
+        shutil.rmtree(self.tagging_location, ignore_errors=True)
         print("Tear down")
 
     def test_get_top_rows(self):
@@ -53,7 +53,6 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
-    #@unittest.skip
     def test_get_top_rows_empty_class_balance(self):
         N_ROWS = 3
         N_FILES = 3
@@ -124,7 +123,6 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
-    #@unittest.skip
     def test_create_vott_json(self):
         N_ROWS = 3
         N_FILES = 3
