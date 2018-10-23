@@ -228,8 +228,6 @@ if __name__ == "__main__":
     import sys
     import os
     # Allow us to import utils
-    print("Parent:")
-    print(Path.cwd().parent)
     config_dir = str(Path.cwd().parent / "utils")
     if config_dir not in sys.path:
         sys.path.append(config_dir)
