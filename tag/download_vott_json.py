@@ -123,15 +123,14 @@ def select_rows(arr_image_data, num_rows, is_largest):
     return top
 
 def prepare_per_class_dict(all_files_per_folder, class_balances_cnt, tag_names):
-    result = {}
+    #result = {}
+    result = defaultdict(list)
     for k, v in all_files_per_folder.items():
         v_arr = np.array(v)
         classes = v_arr[:, TAG_LOCATION]
         for i in range(class_balances_cnt):
             class_i = tag_names[i]
             if class_i in classes:
-                if class_i not in result:
-                    result[class_i] = []
                 result[class_i].append(v)
 
     return result
