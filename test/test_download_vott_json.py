@@ -3,6 +3,7 @@ import shutil
 import sys
 import  os
 from pathlib import Path
+import filecmp
 
 # Allow us to import utils
 config_dir = str(Path.cwd().parent / "utils")
@@ -23,8 +24,6 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.tagging_location = self.config_file["tagging_location"] + "_test"
         shutil.rmtree(self.tagging_location, ignore_errors=True)
         self.csv_file_loc = Path(self.config_file["tagging_location"])
-        # prepare file
-        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
 
         self.csv_file_loc.mkdir(parents=True, exist_ok=True)
         self. max_tags_per_pixel = self.config_file.get("max_tags_per_pixel")
@@ -32,11 +31,26 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.user_folders = self.config_file["user_folders"] == "True"
         self.pick_max  = self.config_file["pick_max"] == "True"
 
+
+
     def tearDown(self):
         shutil.rmtree(self.tagging_location, ignore_errors=True)
+        shutil.rmtree("Images", ignore_errors=True)
+
+        if os.path.exists("totag.csv"):
+            os.remove("totag.csv")
+
+        if os.path.exists("tagging.csv"):
+                os.remove("tagging.csv")
+        if os.path.exists("Images.json"):
+            os.remove("Images.json")
+
         print("Tear down")
 
     def test_get_top_rows(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 3
         N_FILES = 3
         EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
@@ -54,6 +68,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_get_top_rows_empty_class_balance(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 3
         N_FILES = 3
         EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
@@ -69,6 +86,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_get_top_rows_invalid_class_balance1(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 3
         N_FILES = 3
         EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
@@ -84,6 +104,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_get_top_rows_invalid_class_balance2(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 3
         N_FILES = 3
         EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
@@ -100,6 +123,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_get_top_rows_class_balance_min(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 3
         N_FILES = 3
         EXPECTED = [[['st1091.png', 'knot', '0.20989896', '0.251748', '0.34986168', '0.3921352', '512', '488', 'board_images_png', '0.99201256', '0.70161'],
@@ -124,6 +150,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_create_vott_json(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", "./totag.csv")
+
         N_ROWS = 3
         N_FILES = 3
         FOLDER_NAME = "board_images_png"
@@ -140,6 +169,9 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(N_FILES, res_immages_cnt)
 
     def test_get_top_rows_with_bkg(self):
+        # prepare file
+        shutil.copyfile("./totag_source.csv", str(self.csv_file_loc / "totag.csv"))
+
         N_ROWS = 5
         N_FILES = 5
         EXPECTED = [[['st1840.png', 'knot', '0.12036637', '0.18497443', '0.7618415', '0.8283344', '512', '488', 'board_images_png', '0.986', '0.986'],
@@ -161,6 +193,23 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
+    def test_create_vott_json(self):
+        # prepare file
+        shutil.copyfile("./totag_source2.csv", "totag.csv")
+
+        csv_file_loc = Path('.')
+        N_IMAGES = 4
+        user_folders = False
+        pick_max = True
+        tagging_location = "."
+        create_vott_json(csv_file_loc, N_IMAGES, user_folders,
+                         pick_max, "board_images_png",
+                         tagging_location, blob_credentials = None,
+                         tag_names="knot,defect".split(","),
+                         max_tags_per_pixel= 2,
+                         config_class_balance=None,
+                         colors = ["#e9f1fe", "#f3e9ff"])
+        self.assertEqual(filecmp.cmp('Images.json', 'Images_source.json'), True, "generated VOTT json is correct")
 
 if __name__ == '__main__':
     unittest.main()

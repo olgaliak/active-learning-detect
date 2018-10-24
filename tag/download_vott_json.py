@@ -11,6 +11,7 @@ import numpy as np
 from io import StringIO
 from math import isclose
 
+
 CONFIDENCE_LOCATION = -1
 TAG_CONFIDENCE_LOCATION = -2
 FILENAME_LOCATION = 0
@@ -109,7 +110,7 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
     dirjson["visitedFrames"] = list(range(len(all_predictions)))
     dirjson["tag_colors"] = tag_colors
     with open(str(output_location)+".json","w") as json_out:
-        json.dump(dirjson, json_out)
+        json.dump(dirjson, json_out, sort_keys = True)
 
 
 def select_rows(arr_image_data, num_rows, is_largest):
@@ -210,11 +211,12 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, con
     return all_lists
 
 def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None,
-                     tag_names = ["stamp"], max_tags_per_pixel=None, config_class_balance=None):
+                     tag_names = ["stamp"], max_tags_per_pixel=None, config_class_balance=None, colors = None):
     all_rows = get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance)
     # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
     # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
-    colors = ['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for
+    if colors is None:
+        colors = ['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for
             r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]]
 
     make_vott_output(all_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
