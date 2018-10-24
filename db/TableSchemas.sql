@@ -40,8 +40,7 @@ ALTER TABLE ONLY Image_Tagging
 -- Set up table and autoincrementing primary key
 CREATE TABLE Image_Info (
     ImageId integer NOT NULL,
-    ImageName text NOT NULL,
-    Folder text NOT NULL,
+    OriginalImageName text NOT NULL,
     Height integer NOT NULL,
     Width integer NOT NULL
 );
