@@ -10,6 +10,20 @@ import numpy as np
 NUM_CHANNELS=3
 FOLDER_LOCATION=8
 
+PREDICTIONS_SCHEMA = \
+    ["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "box_confidence", "image_confidence"]
+PREDICTIONS_SCHEMA_NO_FOLDER =\
+    ["filename", "class", "xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"]
+
+#name,prediction[CLASS_IDX],prediction[XMIN_IDX],prediction[XMAX_IDX],prediction[YMIN_IDX],prediction[YMAX_IDX],height,width,folder,prediction[BOX_CONFID_IDX], confidence
+BOX_CONFID_IDX = 0
+CLASS_IDX = 1
+XMIN_IDX = 3
+XMAX_IDX = 5
+YMIN_IDX = 2
+YMAX_IDX = 4
+
+
 def calculate_confidence(predictions):
     return min([float(prediction[0]) for prediction in predictions])
 
@@ -23,25 +37,34 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
         tagged_writer = csv.writer(tagged_file)
         untagged_writer = csv.writer(untagged_file)
         if user_folders:
-            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "box_confidence", "image_confidence"])
-            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","folder", "box_confidence", "image_confidence"])
+            tagged_writer.writerow(PREDICTIONS_SCHEMA)
+            untagged_writer.writerow(PREDICTIONS_SCHEMA)
         else:
-            tagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"])
-            untagged_writer.writerow(["filename", "class", "xmin","xmax","ymin","ymax","height","width","box_confidence", "image_confidence"])
+            tagged_writer.writerow(PREDICTIONS_SCHEMA_NO_FOLDER)
+            untagged_writer.writerow(PREDICTIONS_SCHEMA_NO_FOLDER)
         if user_folders:
             for (folder, name), predictions, (height, width) in zip(all_names, all_predictions, all_sizes):
                 if not predictions:
                     predictions = [[0,"NULL",0,0,0,0]]
                 confidence = calculate_confidence(predictions)
                 for prediction in predictions:
-                    (tagged_writer if name in file_set[folder] else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,folder,prediction[0], confidence])
+                    (tagged_writer if name in file_set[folder] else untagged_writer).writerow([
+                        name,
+                        prediction[CLASS_IDX],prediction[XMIN_IDX],prediction[XMAX_IDX],
+                        prediction[YMIN_IDX],prediction[YMAX_IDX],height,width,
+                        folder,
+                        prediction[BOX_CONFID_IDX], confidence])
         else:
             for name, predictions, (height,width) in zip(all_names, all_predictions, all_sizes):
                 if not predictions:
                     predictions = [[0,"NULL",0,0,0,0]]
                 confidence = calculate_confidence(predictions)
                 for prediction in predictions:
-                    (tagged_writer if name in file_set else untagged_writer).writerow([name,prediction[1],prediction[3],prediction[5],prediction[2],prediction[4],height,width,prediction[0], confidence])
+                    (tagged_writer if name in file_set else untagged_writer).writerow([
+                            name,
+                            prediction[CLASS_IDX], prediction[XMIN_IDX], prediction[XMAX_IDX],
+                            prediction[YMIN_IDX], prediction[YMAX_IDX], height, width,
+                            prediction[BOX_CONFID_IDX], confidence])
 
 def get_suggestions(detector, basedir: str, untagged_output: str, 
     tagged_output: str, cur_tagged: str, cur_tagging: str, min_confidence: float =.2,
@@ -106,7 +129,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
         all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
         for curindex, image in enumerate(all_image_files):
             all_images[curindex] = cv2.resize(cv2.imread(str(image), CV2_COLOR_LOAD_FLAG), image_size)
-        all_predictions = detector.predict(all_images, min_confidence=min_confidence)
+        all_predictions = detector.predict(all_images, batch_size=2, min_confidence=min_confidence)
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
 
 if __name__ == "__main__":
