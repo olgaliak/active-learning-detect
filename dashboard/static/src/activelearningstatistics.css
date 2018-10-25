@@ -1,0 +1,10 @@
+.title {
+    padding: 10px 10px 0px 20px;
+    font-family: 'Helvetica'
+}
+
+.chart {
+    width: 500px;
+    padding: 30px 10px 30px 20px;
+    height: 400px;
+}
