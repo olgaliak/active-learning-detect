@@ -80,6 +80,7 @@ def download(config, num_images, strategy=None):
     file_tree = pathlib.Path(os.path.expanduser(config.get("tagging_location")))
     if file_tree.exists():
         print("Removing existing tag data directory: " + str(file_tree))
+
         shutil.rmtree(str(file_tree), ignore_errors=True)
 
     data_dir = pathlib.Path(file_tree / "data")
@@ -91,6 +92,7 @@ def download(config, num_images, strategy=None):
     download_images(data_dir, json_resp)
     print("Downloaded files. Ready to tag!")
     return images_to_download
+
 
 
 def download_images(image_dir, json_resp):

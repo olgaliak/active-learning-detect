@@ -33,7 +33,9 @@ class TFDetector():
                 image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
                 split_data = [images_data[i:i+batch_size] for i in range(0,images_data.shape[0],batch_size)]
                 split_data = [sess.run(tensor_dict, feed_dict={image_tensor: batch}) for batch in split_data]
-                split_data = [np.dstack((batch['detection_scores'], self.label_arr[batch['detection_classes'].astype(np.uint8)], batch['detection_boxes'])) for batch in split_data]
+                split_data = [np.dstack((batch['detection_scores'],
+                              self.label_arr[batch['detection_classes'].astype(np.uint8)],
+                              batch['detection_boxes'])) for batch in split_data]
                 combined = np.concatenate(split_data)
                 non_zero = combined[:,:,0].astype(np.float)>min_confidence
         return [sorted(cur_combined[cur_non_zero].tolist(), reverse=True) for cur_combined, cur_non_zero in zip(combined, non_zero)]
