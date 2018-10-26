@@ -57,7 +57,7 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         user_folders = False
         pick_max = True
         tagging_location = "."
-        classesIDs = list(range(1, 81))
+        classesIDs = list(range(1, 91))
         classes = ','.join(str(x) for x in classesIDs)
         create_vott_json(csv_file_loc, N_IMAGES, user_folders,
                          pick_max, FOLDER,

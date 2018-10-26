@@ -158,6 +158,8 @@ def parse_class_balance_setting(config_value, expected_cnt):
             print("Sum of balance settings {0} should add up to 1: {1}".format(config_value, s) )
 
 
+def get_top_row_classmap(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
+    print("tbd")
 def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
     #Add class for background
     if "NULL" not in tag_names:
@@ -170,8 +172,12 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, con
         csv_list = list(reader)
 
     all_files = defaultdict(lambda: defaultdict(list))
-    for row in csv_list:
-        all_files[row[FOLDER_LOCATION]][row[0]].append(row)
+    if user_folders:
+        for row in csv_list:
+            all_files[row[FOLDER_LOCATION]][row[0]].append(row)
+    else:
+        for row in csv_list:
+            all_files['default_folder'][row[0]].append(row)
     all_lists = []
     class_balances_cnt = 1
     if ideal_class_balance is not None:
