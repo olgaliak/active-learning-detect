@@ -1,6 +1,6 @@
 ## Deploying a Python Azure Function application
 
-Assuming one has gone through the [instructions to setup the environemnt](../setup/initial/README.md)
+Assuming one has gone through the [instructions to setup the environment](../setup/initial/README.md)
 for developing a Python based Azure Function, the skeleton applicaiton created with an `HttpTrigger`
 app can be deployed.
 
