@@ -17,9 +17,9 @@ class ImageTagState(IntEnum):
 
 # An entity class for a VOTT image
 class ImageInfo(object):
-    def __init__(self, image_name, image_url, height, width):
+    def __init__(self, image_name, image_location, height, width):
         self.image_name = image_name
-        self.image_url = image_url
+        self.image_location = image_location
         self.height = height
         self.width = width
 
@@ -45,8 +45,8 @@ def generate_test_image_infos(count):
     list_of_image_infos = []
     for i in range(count):
         file_name = f'{id_generator(size=random.randint(4,10))}.jpg'
-        image_url = f'https://mock-storage.blob.core.windows.net/new-uploads/{file_name}'
-        img = ImageInfo(file_name,image_url,random.randint(100,600),random.randint(100,600))
+        image_location = f'https://mock-storage.blob.core.windows.net/new-uploads/{file_name}'
+        img = ImageInfo(file_name,image_location,random.randint(100,600),random.randint(100,600))
         list_of_image_infos.append(img)
     return list_of_image_infos
 
@@ -56,10 +56,10 @@ def get_image_ids_for_new_images(conn, list_of_image_infos):
         cursor = conn.cursor()
         for img in list(list_of_image_infos):
             query = "INSERT INTO Image_Info (OriginalImageName,ImageLocation,Height,Width) VALUES ('{0}','{1}',{2},{3}) RETURNING ImageId;"
-            cursor.execute(query.format(img.image_name,img.image_url,str(img.height),str(img.width)))
+            cursor.execute(query.format(img.image_name,img.image_location,str(img.height),str(img.width)))
             new_img_id = cursor.fetchone()[0]
-            url_to_image_id_map[img.image_url] = new_img_id
-            #__update_image(conn,[new_img_id],ImageTagState.NOT_READY)
+            url_to_image_id_map[img.image_location] = new_img_id
+            #__update_images(conn,[new_img_id],ImageTagState.NOT_READY)
         conn.commit()
     print(f"Inserted {len(url_to_image_id_map)} images to the DB")
     return url_to_image_id_map
@@ -77,7 +77,7 @@ def get_new_images(conn,number_of_images):
         print('Image Id: {0} \t\tImage Name: {1} \t\tTag State: {2}'.format(row[0], row[1], row[2]))
         selected_images_to_tag[str(row[0])] = str(row[1])
 
-    __update_image(conn,selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS)
+    __update_images(conn,selected_images_to_tag,ImageTagState.TAG_IN_PROGRESS)
     return selected_images_to_tag.values()
 
 def update_image_urls(conn,image_id_to_url_map):
@@ -86,19 +86,19 @@ def update_image_urls(conn,image_id_to_url_map):
         query = "UPDATE Image_Info SET ImageLocation = '{0}', ModifiedDtim = now() WHERE ImageId = {1}"
         cursor.execute(query.format(new_url,image_id))
         print(f"Updated ImageId: {image_id} to new ImageLocation: {new_url}")
-        __update_image(conn,[image_id],ImageTagState.READY_TO_TAG)
+        __update_images(conn,[image_id],ImageTagState.READY_TO_TAG)
         print(f"ImageId: {image_id} to has a new state: {ImageTagState.READY_TO_TAG.name}")
         conn.commit()
         
 def update_tagged_images(conn,list_of_image_ids):
-    __update_image(conn,list_of_image_ids,ImageTagState.COMPLETED_TAG)
+    __update_images(conn,list_of_image_ids,ImageTagState.COMPLETED_TAG)
     print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.COMPLETED_TAG.name}")
 
 def update_untagged_images(conn,list_of_image_ids):
-    __update_image(conn,list_of_image_ids,ImageTagState.INCOMPLETE_TAG)
+    __update_images(conn,list_of_image_ids,ImageTagState.INCOMPLETE_TAG)
     print(f"Updated {len(list_of_image_ids)} image(s) to the state {ImageTagState.INCOMPLETE_TAG.name}")
 
-def __update_image(conn, list_of_image_ids, new_image_tag_state):
+def __update_images(conn, list_of_image_ids, new_image_tag_state):
     if not isinstance(new_image_tag_state, ImageTagState):
         raise TypeError('new_image_tag_state must be an instance of Direction Enum')
 
