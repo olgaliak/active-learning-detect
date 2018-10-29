@@ -1,0 +1,7 @@
+azure-functions==1.0.0a5
+azure-functions-worker==1.0.0a6
+grpcio==1.14.2
+grpcio-tools==1.14.2
+protobuf==3.6.1
+six==1.11.0
+pg8000==1.12.3
