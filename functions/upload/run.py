@@ -31,19 +31,18 @@ def process_vott_json(json):
             "imageNotVisisted" : unvisited_ids
         }
 
-try:
-    vott_json = json.loads(open(os.environ['req']).read())
+if __name__ == "__main__":
+    try:
+        vott_json = json.loads(open(os.environ['req']).read())
 
-    stats = process_vott_json(vott_json)
-    # TODO: Call interface to update imagesVisited to 'COMPLETED_TAG' state and imageNotVisisted to 'INCOMPLETE_TAG'
+        stats = process_vott_json(vott_json)
+        # TODO: Call interface to update imagesVisited to 'COMPLETED_TAG' state and imageNotVisisted to 'INCOMPLETE_TAG'
 
-    response = open(os.environ['res'], 'w')
-    response.write(str(stats))
-    response.close()
-except Exception as e:
-    response = open(os.environ['res'], 'w')
-    # TODO: Add error status code and proper message?
-    response.write(str(e))
-    response.close()
-
-# TODO: Check if __name__ == this.__name__???? Then call everything wrapped into a method?
+        response = open(os.environ['res'], 'w')
+        response.write(str(stats))
+        response.close()
+    except Exception as e:
+        response = open(os.environ['res'], 'w')
+        # TODO: Add error status code and proper message?
+        response.write(str(e))
+        response.close()
