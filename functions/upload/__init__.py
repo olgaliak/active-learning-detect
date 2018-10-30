@@ -1,11 +1,13 @@
 import os
 import json
 
+# TODO: Move this into a library
 def get_id_from_filename(filename):
     path_components = filename.split('/')
     filename = path_components[-1]
     return int(filename.split('.')[0])
 
+# TODO: Move this into a library
 def process_vott_json(json):
     all_frame_data = json['frames']
 
@@ -31,7 +33,7 @@ def process_vott_json(json):
             "imageNotVisisted" : unvisited_ids
         }
 
-if __name__ == "__main__":
+def main():
     try:
         vott_json = json.loads(open(os.environ['req']).read())
 
@@ -46,3 +48,6 @@ if __name__ == "__main__":
         # TODO: Add error status code and proper message?
         response.write(str(e))
         response.close()
+
+if __name__ == "__main__":
+    main()
