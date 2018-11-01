@@ -24,14 +24,6 @@ def execute_queries_from_map(conn, file_query_map):
             print("\t{0}".format(file_path))         
     return
 
-def execute_queries(conn, queries):
-    cursor = conn.cursor()
-    if(len(queries)>0):
-        for query in queries:
-            cursor.execute(query)
-            conn.commit()
-    return
-
 def create_database(conn, db_name):
     if db_name:
         cursor = conn.cursor()
