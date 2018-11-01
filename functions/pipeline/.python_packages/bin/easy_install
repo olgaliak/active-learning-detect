@@ -1,0 +1,24 @@
+#!/usr/local/opt/python/bin/python3.7
+
+# -*- coding: utf-8 -*-
+if __name__ == '__main__':
+    import sys, re
+
+    def _resolve(module, func):
+        __import__(module)
+        mod = sys.modules[module]
+        parts = func.split('.')
+        result = getattr(mod, parts.pop(0))
+        for p in parts:
+            result = getattr(result, p)
+        return result
+
+    try:
+        sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+
+        func = _resolve('setuptools.command.easy_install', 'main')
+        rc = func() # None interpreted as 0
+    except Exception as e:  # only supporting Python >= 2.6
+        sys.stderr.write('%s\n' % e)
+        rc = 1
+    sys.exit(rc)
