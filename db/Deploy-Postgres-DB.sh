@@ -10,7 +10,7 @@ Local_IP_Address=$(curl -s http://whatismyip.akamai.com/)
 
 # Check if any of the args are empty
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-    echo "Expected usage: 'sh $0 (Azure Resource Group Name) (PostGres ServerName) (PostGres UserName)'"
+    echo "Usage: 'sh $0 (Azure Resource Group Name) (PostGres ServerName) (PostGres UserName)'"
     exit 1
 fi
 

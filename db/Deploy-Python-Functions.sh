@@ -8,9 +8,10 @@ set -e
 ResourceGroup=$1
 StorageName=$2
 FunctionAppName=$3
+AppInsightsName=$4
 
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-    echo "Expected usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name)'"
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
+    echo "Usage: 'sh $0 (Azure Resource Group Name) (Azure Function Storage Name) (Azure Function App Name) (AppInsightsName)'"
     exit 1
 fi
 
@@ -65,3 +66,12 @@ echo "Create a function app (if it does not exist for the current subscription)"
 echo
 az functionapp createpreviewapp -n $FunctionAppName -g $ResourceGroup -l "WestUS" -s $StorageName --runtime python --is-linux
 
+echo
+echo "Retrieving App Insights Id for $AppInsightsName"
+echo
+AppInsightsKey=$(az resource show -g $ResourceGroup -n $AppInsightsName --resource-type "Microsoft.Insights/components" --query properties.InstrumentationKey)
+
+echo
+echo "Setting application setting APPINSIGHTS_INSTRUMENTATIONKEY on $FunctionAppName"
+echo
+az functionapp config appsettings set --name $FunctionAppName --resource-group $ResourceGroup --settings "APPINSIGHTS_INSTRUMENTATIONKEY = $AppInsightsKey"
