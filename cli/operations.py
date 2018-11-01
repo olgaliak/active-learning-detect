@@ -5,6 +5,8 @@ import os
 import uuid
 import shutil
 import pathlib
+import json
+import copy
 from azure.storage.blob import BlockBlobService
 
 FUNCTIONS_SECTION = 'FUNCTIONS'
@@ -90,21 +92,16 @@ def download(config, num_images, strategy=None):
         exist_ok=True
     )
 
-    download_images(data_dir, json_resp)
+    download_images(config, data_dir, json_resp)
     print("Downloaded files. Ready to tag!")
     return images_to_download
 
 
-
-def download_images(image_dir, json_resp):
+def download_images(config, image_dir, json_resp):
     print("Downloading files to " + str(image_dir))
 
-    # dummy json file for vott.
-    data_file = pathlib.Path(image_dir / "data.json")
-
-    with open(str(data_file), "wb") as file:
-        file.writelines(json_resp.get("vott", "no json"))
-        file.close()
+    # Write generated VoTT data from the function to a file.
+    write_vott_data(image_dir, json_resp)
 
     urls = json_resp['urls']
     dummy = urls[0]
@@ -128,22 +125,84 @@ def download_images(image_dir, json_resp):
             file.close()
 
 
+def write_vott_data(image_dir, json_resp):
+    data_file = pathlib.Path(image_dir / "data.json")
+    vott_data = json_resp.get("vott", None)
+
+    if not vott_data:
+        return
+
+    try:
+        vott_json = json.loads(vott_data)
+    except ValueError as e:
+        print("Corrupted VOTT data received.")
+        return
+
+    vott_json_with_fixed_paths = prepend_file_paths(image_dir, vott_json)
+
+    with open(str(data_file), "wb") as file:
+        vott_json_string = json.dumps(vott_json_with_fixed_paths)
+        file.writelines(vott_json_string)
+        file.close()
+
+
+def prepend_file_paths(image_dir, vott_json):
+    # Don't clobber the response.
+    modified_json = copy.deepcopy(vott_json)
+    frames = modified_json["frames"]
+
+    # Replace the frame keys with the fully qualified path
+    # for the image. Should look something like:
+    # This is the /path/to/tagging_location/data/1.png in the end.
+    for frame_key in frames.keys():
+        new_key = str(pathlib.Path(image_dir / frame_key))
+        frames[new_key] = frames.pop(frame_key)
+
+    modified_json["frames"] = frames
+
+    return modified_json
+
+
 def upload(config):
-    storage_container = config.get("storage_container")
+    functions_url = config.get('url')
     tagging_location = pathlib.Path(config.get("tagging_location"))
-    storage_client = get_azure_storage_client(config)
 
     print("Uploading VOTT json file…")
 
     vott_json = pathlib.Path(tagging_location / "data.json")
+    json_data = json.loads(vott_json)
 
-    storage_client.create_blob_from_path(
-        storage_container,
-        str(uuid.uuid4()) + "_vott.json",
-        str(vott_json)
-    )
+    # Munge the vott json file.
+    munged_json = trim_file_paths(json_data)
 
+    response = requests.post(functions_url, json=munged_json)
+    response.raise_for_status()
+
+    json_resp = response.json()
+    print(json_resp)
     print("Done!")
+
+
+def trim_file_paths(json_data):
+    modified_json = copy.deepcopy(json_data)
+
+    munged_frames = modified_json["frames"]
+    visited_frames = modified_json["visitedFrames"]
+
+    for frame_key in munged_frames.keys():
+        frame_name = pathlib.Path(frame_key).name
+        munged_frames[frame_name] = munged_frames.pop(frame_key)
+
+    munged_visited_frames = []
+    for frame_path in visited_frames:
+        munged_visited_frames.append(
+            pathlib.Path(frame_path).name
+        )
+
+    modified_json["frames"] = munged_frames
+    modified_json["visitedFrames"] = munged_visited_frames
+
+    return modified_json
 
 
 def read_config(config_path):
