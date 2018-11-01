@@ -1,0 +1,3 @@
+static/dist/
+static/node_modules/
+server/venv/

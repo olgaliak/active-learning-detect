@@ -114,4 +114,7 @@ weights/*.h5
 models/*.h5
 
 # csv files
-*.csv
+tag/*.csv
+
+# TF exported graph files
+.pb
