@@ -3,10 +3,10 @@ import logging
 import azure.functions as func
 import json
 import os
-from ..shared import data_access as DataAccess
+from ..shared import db_access as DB_Access
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    #logging.info('Python HTTP trigger function processed a request.')
+    logging.info('Python HTTP trigger function processed a request.')
 
     imageCount = req.params.get('imageCount')
     # setup response object
@@ -21,7 +21,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
     else:
         # setup response object
-        images = DataAccess.get_unvisited_items(imageCount)
+        connection = DB_Access.get_connection()
+        images = DB_Access.get_images_for_tagging(connection, imageCount)
         content = json.dumps(images)
         return func.HttpResponse(
             status_code=200, 
