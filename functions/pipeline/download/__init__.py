@@ -3,7 +3,7 @@ import logging
 import azure.functions as func
 import json
 import os
-from shared import data_access as DataAccess
+from ..shared import data_access as DataAccess
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     #logging.info('Python HTTP trigger function processed a request.')
