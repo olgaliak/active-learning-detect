@@ -95,11 +95,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         update_untagged_images(get_connection(), stats["imageNotVisisted"])
 
         return func.HttpResponse(
-             str(stats),
-             status_code=200
+            body = json.dumps(stats),
+            status_code = 200,
+            headers = {
+                "content-type": "application/json"
+                }
         )
     except Exception as e:
         return func.HttpResponse(
-             "exception:" + str(e),
-             status_code=500
+            "exception:" + str(e),
+            status_code = 500
         )
