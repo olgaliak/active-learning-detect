@@ -5,10 +5,9 @@ import os
 import pg8000   # Getting an error - E0401: Unable to import
 
 # Constants
-untagged_state = 0
-tagging_state = 1
-tagged_state = 2
-
+untagged_state = 1
+tagging_state = 2
+tagged_state = 3
 
 host = os.getenv('DB_HOST', None)
 user = os.getenv('DB_USER', None) 

@@ -95,7 +95,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         update_untagged_images(get_connection(), stats["imageNotVisisted"])
 
         return func.HttpResponse(
-             str(stats) + str(os.environ),
+             str(stats),
              status_code=200
         )
     except Exception as e:
