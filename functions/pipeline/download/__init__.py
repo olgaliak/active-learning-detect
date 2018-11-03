@@ -23,6 +23,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         # setup response object
         connection = DB_Access.get_connection()
         images = DB_Access.get_images_for_tagging(connection, imageCount)
+
+        # TODO: Build vott json
+
         content = json.dumps(images)
         return func.HttpResponse(
             status_code=200, 

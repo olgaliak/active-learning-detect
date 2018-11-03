@@ -27,5 +27,5 @@ def process_vott_json(json):
             "numImagesVisted" : len(visited_ids),
             "numImagesNotVisted" : len(unvisited_ids),
             "imagesVisited" : visited_ids,
-            "imageNotVisisted" : unvisited_ids
+            "imagesNotVisited" : unvisited_ids
         }

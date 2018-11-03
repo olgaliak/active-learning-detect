@@ -16,7 +16,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         DB_Access.update_tagged_images(connection, stats["imagesVisited"])
 
         # Update untagged images
-        DB_Access.update_untagged_images(connection, stats["imageNotVisisted"])
+        DB_Access.update_untagged_images(connection, stats["imagesNotVisited"])
 
         return func.HttpResponse(
             body = json.dumps(stats),

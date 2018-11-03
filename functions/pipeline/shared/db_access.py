@@ -14,15 +14,20 @@ class ImageTagState(IntEnum):
     INCOMPLETE_TAG = 4
     ABANDONED = 5
 
+# Temp for local testing/
+default_db_host = ""
+default_db_name = ""
+default_db_user = ""
+default_db_pass = ""
+
 def get_connection():
-    return __new_postgres_connection(os.getenv('DB_HOST', None), os.getenv('DB_NAME', None), os.getenv('DB_USER', None), os.getenv('DB_PASS', None))
+    return __new_postgres_connection(os.getenv('DB_HOST', default_db_host), os.getenv('DB_NAME', default_db_name), os.getenv('DB_USER', default_db_user), os.getenv('DB_PASS', default_db_pass))
 
 def get_images_for_tagging(conn, num_images):
     cursor = conn.cursor()
 
     # From the database, select the number of images the user requested where tag state is "READY_TO_TAG"
-    # TODO: Add INCOMPLETE_TAG as well?
-    cursor.execute("SELECT b.ImageId, b.OriginalImageName, a.TagStateId, b.ImageLocation FROM Image_Tagging_State a JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId = {0} order by a.createddtim DESC limit {1}".format(ImageTagState.READY_TO_TAG, num_images))
+    cursor.execute("SELECT b.ImageId, b.OriginalImageName, a.TagStateId, b.ImageLocation FROM Image_Tagging_State a JOIN Image_Info b ON a.ImageId = b.ImageId WHERE a.TagStateId IN ({0},{1}) order by a.createddtim ASC limit {2}".format(ImageTagState.READY_TO_TAG, ImageTagState.INCOMPLETE_TAG,num_images))
     
     # Put the ImageId and ImageLocation (URL) for the images to tag into a dictionary named selected_images_to_tag
     selected_images_to_tag = {}
