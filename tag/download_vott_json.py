@@ -158,8 +158,76 @@ def parse_class_balance_setting(config_value, expected_cnt):
             print("Sum of balance settings {0} should add up to 1: {1}".format(config_value, s) )
 
 
-def get_top_row_classmap(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
-    print("tbd")
+def get_top_row_classmap(file_location, num_rows, user_folders, pick_max, tag_names, init_tag_names, config_class_balance,
+                         unmapclass_list, default_class, class_map_dict):
+    # Add class for background
+    if "NULL" not in tag_names:
+        tag_names = tag_names + ["NULL"]
+    ideal_class_balance = parse_class_balance_setting(config_class_balance, len(tag_names))
+
+    with (file_location / "init_totag.csv").open(mode='r') as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        csv_list = list(reader)
+
+    all_files = defaultdict(lambda: defaultdict(list))
+    if user_folders:
+        for row in csv_list:
+            all_files[row[FOLDER_LOCATION]][row[0]].append(row)
+    else:
+        for row in csv_list:
+            all_files['default_folder'][row[0]].append(row)
+    all_lists = []
+    class_balances_cnt = 1
+    if ideal_class_balance is not None:
+        class_balances_cnt = len(ideal_class_balance)
+
+    for folder_name in all_files:
+        if ideal_class_balance is not None:
+            all_files_per_class = prepare_per_class_dict(all_files[folder_name], class_balances_cnt, init_tag_names)
+            for i in range(class_balances_cnt):
+                num_rows_i = round(num_rows * float(ideal_class_balance[i]))
+                init_class_i = init_tag_names[i]
+                top = select_rows(all_files_per_class[init_class_i], num_rows_i, is_largest=pick_max)
+
+                # drop values we selected from the dict
+                # the same image may have object from diff classes
+                for j in range(class_balances_cnt):
+                    class_j = init_tag_names[j]
+                    all_files_per_class[class_j] = [v for v in all_files_per_class[class_j]
+                                                    if v not in top]
+                #TBD fix the mapping and remove mot needed classes
+                for im in top:
+                    for obj in im[:]:
+                        obj_init_class = obj[TAG_LOCATION]
+                        # remove bbozex for classes we are not interested in
+                        if obj_init_class in unmapclass_list:
+                            im.remove(obj)
+                        # assign new name to class
+                        if obj_init_class in init_tag_names:
+                            obj[TAG_LOCATION] = class_map_dict[obj_init_class]
+                        else:
+                            obj[TAG_LOCATION] = default_class
+
+                all_lists = all_lists + top
+        else:
+            top = select_rows(all_files[folder_name].values(), num_rows, is_largest=pick_max)
+
+            all_lists = all_lists + top
+
+    tagging_files = {row[0][0] for row in all_lists}
+    file_exists = (file_location / "tagging.csv").is_file()
+    with (file_location / "totag.csv").open(mode='w', newline='') as untagged, (file_location / "tagging.csv").open(
+            mode='a', newline='') as tagging:
+        untagged_writer, tagging_writer = csv.writer(untagged), csv.writer(tagging)
+        untagged_writer.writerow(header)
+        if not file_exists:
+            tagging_writer.writerow(header)
+        for row in csv_list:
+            (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
+    return all_lists
+
+
 def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
     #Add class for background
     if "NULL" not in tag_names:

@@ -29,7 +29,8 @@ def select_jsons(image_directory, user_folders, file_location):
     for json_file, sorted_images in zip(all_jsons, all_images):
 
         image_directory = Path(json_file.rsplit(".", 1)[0]).stem
-        json_file = json.load(open(json_file))["frames"]
+        with open(json_file, "r") as read_file:
+            json_file = json.load(read_file)["frames"]
 
         if (file_location/"tagging.csv").is_file():
             with (file_location/"tagging.csv").open(mode='r') as file:

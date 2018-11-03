@@ -4,6 +4,8 @@ import sys
 import  os
 from pathlib import Path
 import filecmp
+import json
+import numpy as np
 
 # Allow us to import utils
 config_dir = str(Path.cwd().parent / "utils")
@@ -14,7 +16,7 @@ from config import Config
 tag_dir = str(Path.cwd().parent / "tag")
 if tag_dir not in sys.path:
     sys.path.append(tag_dir)
-from download_vott_json import create_vott_json, get_top_rows
+from download_vott_json import create_vott_json, get_top_rows, get_top_row_classmap
 
 
 class DownloadInitVOTTJSONTestCase(unittest.TestCase):
@@ -47,6 +49,7 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
 
         print("Tear down")
 
+    @unittest.skip
     def test_create_vott_json(self):
         # prepare file
         shutil.copyfile("./untagged_cow.csv", "totag.csv")
@@ -67,6 +70,37 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
                          config_class_balance=None
                          )
         #self.assertEqual(filecmp.cmp('Images.json', 'Images_source.json'), True, "generated VOTT json is correct")
+
+    def test_get_filtered(self):
+        shutil.copyfile("./untagged_cow.csv", "init_totag.csv")
+        json_fn = "init_classes_map.json"
+        json_config = None
+        with open(json_fn, "r") as read_file:
+            json_config = json.load(read_file)
+        classmap = json_config["classmap"]
+        ideal_balance_list = []
+        tag_names = []
+        init_tag_names = []
+        class_map_dict = {}
+        for m in classmap:
+            ideal_balance_list.append(m['balance'])
+            tag_names.append(m['map'])
+            init_tag_names.append(m['initclass'])
+            class_map_dict[m['initclass']] = m['map']
+        ideal_balance = ','.join(ideal_balance_list)
+        unmapclass_list = json_config["unmapclass"]
+        default_class = json_config["default_class"]
+        csv_file_loc = Path('.')
+        rows = get_top_row_classmap(csv_file_loc, num_rows = 10, user_folders = True,
+                                    pick_max = False, tag_names = tag_names, init_tag_names = init_tag_names,
+                                    config_class_balance = ideal_balance,
+                                    unmapclass_list = unmapclass_list, default_class = default_class,
+                                    class_map_dict = class_map_dict)
+        expected_rows = np.load("init_class_get_rows_min.npy")
+        self.assertEqual((rows == expected_rows).all(), True)
+        print("")
+
+
 
 if __name__ == '__main__':
     unittest.main()
