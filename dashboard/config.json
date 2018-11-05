@@ -1,0 +1,8 @@
+{
+    "database": "dbname",
+    "user": "username",
+    "host": "hostname",
+    "passw": "password",
+    "plotlyusername": "username",
+    "plotlyapikey": "apikey"
+}
