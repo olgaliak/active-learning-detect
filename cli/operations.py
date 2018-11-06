@@ -67,7 +67,8 @@ def _download_bounds(num_images):
 
 
 def download(config, num_images, strategy=None):
-    functions_url = config.get("url")
+    # TODO: better/more proper URI handling.
+    functions_url = config.get("url") + "/api/download"
     images_to_download = _download_bounds(num_images)
     query = {
         "imageCount": images_to_download
@@ -77,10 +78,14 @@ def download(config, num_images, strategy=None):
     response.raise_for_status()
 
     json_resp = response.json()
+    count = len(json_resp['imageUrls'])
 
-    print("Received " + str(json_resp["count"]) + " files.")
+    print("Received " + str(count) + " files.")
 
-    file_tree = pathlib.Path(os.path.expanduser(config.get("tagging_location")))
+    file_tree = pathlib.Path(os.path.expanduser(
+        config.get("tagging_location"))
+    )
+
     if file_tree.exists():
         print("Removing existing tag data directory: " + str(file_tree))
 
@@ -103,8 +108,8 @@ def download_images(config, image_dir, json_resp):
     # Write generated VoTT data from the function to a file.
     write_vott_data(image_dir, json_resp)
 
-    urls = json_resp['urls']
-    dummy = urls[0]
+    urls = json_resp['imageUrls']
+    dummy = "https://cdn.pixabay.com/photo/2017/02/20/18/03/cat-2083492_960_720.jpg"
 
     for index in range(len(urls)):
         url = urls[index]
@@ -127,7 +132,8 @@ def download_images(config, image_dir, json_resp):
 
 def write_vott_data(image_dir, json_resp):
     data_file = pathlib.Path(image_dir / "data.json")
-    vott_data = json_resp.get("vott", None)
+    # vott_data = json_resp.get("vott", None)
+    vott_data = None
 
     if not vott_data:
         return
@@ -164,13 +170,16 @@ def prepend_file_paths(image_dir, vott_json):
 
 
 def upload(config):
-    functions_url = config.get('url')
-    tagging_location = pathlib.Path(config.get("tagging_location"))
+    functions_url = config.get("url") + "/api/upload"
+    tagging_location = pathlib.Path(
+        os.path.expanduser(config.get("tagging_location"))
+    )
 
     print("Uploading VOTT json file…")
-
     vott_json = pathlib.Path(tagging_location / "data.json")
-    json_data = json.loads(vott_json)
+
+    with open(str(vott_json)) as json_file:
+        json_data = json.load(json_file)
 
     # Munge the vott json file.
     munged_json = trim_file_paths(json_data)
@@ -178,8 +187,7 @@ def upload(config):
     response = requests.post(functions_url, json=munged_json)
     response.raise_for_status()
 
-    json_resp = response.json()
-    print(json_resp)
+    resp_json = response.json()
     print("Done!")
 
 
