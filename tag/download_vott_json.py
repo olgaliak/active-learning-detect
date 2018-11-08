@@ -23,6 +23,18 @@ TAG_STARTING_LOCATION = 2
 # Should be equal to width_location
 TAG_ENDING_LOCATION = 7
 
+def  add_bkg_class_name(tag_names):
+    #Add class for background
+    if "NULL" not in tag_names:
+        tag_names = tag_names + ["NULL"]
+    return  tag_names
+
+def remove_bkg_class_name(tag_names):
+    #Add class for background
+    if "NULL" in tag_names:
+        tag_names.remove("NULL")
+    return  tag_names
+
 def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
     if max_tags_per_pixel is not None:
@@ -32,6 +44,8 @@ def make_vott_output(all_predictions, output_location, user_folders, image_loc, 
         output_location = Path(output_location)/folder_name
     else:
         output_location = Path(output_location)/"Images"
+
+    tag_names = remove_bkg_class_name(tag_names)
 
     output_location.mkdir(parents=True, exist_ok=True)
     using_blob_storage = blob_credentials is not None
@@ -158,95 +172,35 @@ def parse_class_balance_setting(config_value, expected_cnt):
             print("Sum of balance settings {0} should add up to 1: {1}".format(config_value, s) )
 
 
-def get_top_row_classmap(file_location, num_rows, user_folders, pick_max, tag_names, init_tag_names, config_class_balance,
-                         unmapclass_list, default_class, class_map_dict):
-    # Add class for background
-    if "NULL" not in tag_names:
-        tag_names = tag_names + ["NULL"]
-    ideal_class_balance = parse_class_balance_setting(config_class_balance, len(tag_names))
+def filter_top(top, unmapclass_list, tag_names, class_map_dict, default_class):
+    for im in top:
+        for obj in im[:]:
+            obj_init_class = obj[TAG_LOCATION]
+            # remove bboxes for classes we are not interested in
+            if obj_init_class in unmapclass_list:
+                im.remove(obj)
+            # assign new name to class
+            if obj_init_class in tag_names:
+                obj[TAG_LOCATION] = class_map_dict[obj_init_class]
+            else:
+                obj[TAG_LOCATION] = default_class
 
-    with (file_location / "init_totag.csv").open(mode='r') as file:
+    return top
+
+def get_top_rows(file_location_totag, num_rows, user_folders, pick_max, tag_names, ideal_class_balance, func_filter_top = None, *args):
+    with file_location_totag.open(mode='r') as file:
         reader = csv.reader(file)
         header = next(reader)
-        csv_list = list(reader)
+        totag_list = list(reader)
 
     all_files = defaultdict(lambda: defaultdict(list))
     if user_folders:
-        for row in csv_list:
+        for row in totag_list:
             all_files[row[FOLDER_LOCATION]][row[0]].append(row)
     else:
-        for row in csv_list:
+        for row in totag_list:
             all_files['default_folder'][row[0]].append(row)
-    all_lists = []
-    class_balances_cnt = 1
-    if ideal_class_balance is not None:
-        class_balances_cnt = len(ideal_class_balance)
-
-    for folder_name in all_files:
-        if ideal_class_balance is not None:
-            all_files_per_class = prepare_per_class_dict(all_files[folder_name], class_balances_cnt, init_tag_names)
-            for i in range(class_balances_cnt):
-                num_rows_i = round(num_rows * float(ideal_class_balance[i]))
-                init_class_i = init_tag_names[i]
-                top = select_rows(all_files_per_class[init_class_i], num_rows_i, is_largest=pick_max)
-
-                # drop values we selected from the dict
-                # the same image may have object from diff classes
-                for j in range(class_balances_cnt):
-                    class_j = init_tag_names[j]
-                    all_files_per_class[class_j] = [v for v in all_files_per_class[class_j]
-                                                    if v not in top]
-                #TBD fix the mapping and remove mot needed classes
-                for im in top:
-                    for obj in im[:]:
-                        obj_init_class = obj[TAG_LOCATION]
-                        # remove bbozex for classes we are not interested in
-                        if obj_init_class in unmapclass_list:
-                            im.remove(obj)
-                        # assign new name to class
-                        if obj_init_class in init_tag_names:
-                            obj[TAG_LOCATION] = class_map_dict[obj_init_class]
-                        else:
-                            obj[TAG_LOCATION] = default_class
-
-                all_lists = all_lists + top
-        else:
-            top = select_rows(all_files[folder_name].values(), num_rows, is_largest=pick_max)
-
-            all_lists = all_lists + top
-
-    tagging_files = {row[0][0] for row in all_lists}
-    file_exists = (file_location / "tagging.csv").is_file()
-    with (file_location / "totag.csv").open(mode='w', newline='') as untagged, (file_location / "tagging.csv").open(
-            mode='a', newline='') as tagging:
-        untagged_writer, tagging_writer = csv.writer(untagged), csv.writer(tagging)
-        untagged_writer.writerow(header)
-        if not file_exists:
-            tagging_writer.writerow(header)
-        for row in csv_list:
-            (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
-    return all_lists
-
-
-def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance):
-    #Add class for background
-    if "NULL" not in tag_names:
-        tag_names = tag_names + ["NULL"]
-    ideal_class_balance = parse_class_balance_setting(config_class_balance, len(tag_names))
-
-    with (file_location/"totag.csv").open(mode='r') as file:
-        reader = csv.reader(file)
-        header = next(reader)
-        csv_list = list(reader)
-
-    all_files = defaultdict(lambda: defaultdict(list))
-    if user_folders:
-        for row in csv_list:
-            all_files[row[FOLDER_LOCATION]][row[0]].append(row)
-    else:
-        for row in csv_list:
-            all_files['default_folder'][row[0]].append(row)
-    all_lists = []
+    selected_rows = []
     class_balances_cnt = 1
     if ideal_class_balance is not None:
         class_balances_cnt = len(ideal_class_balance)
@@ -266,33 +220,43 @@ def get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, con
                     class_j = tag_names[j]
                     all_files_per_class[class_j] = [v for  v in all_files_per_class[class_j]
                                        if v not in top]
-                all_lists = all_lists + top
+
+                if func_filter_top is not None:
+                    top =  func_filter_top(top, *args) #func_filter_top(top, unmapclass_list, tag_names, class_map_dict, default_class)
+                selected_rows = selected_rows + top
         else:
              top = select_rows(all_files[folder_name].values(), num_rows, is_largest = pick_max)
+             if func_filter_top is not None:
+                 top = func_filter_top(top, args)
+             selected_rows = selected_rows + top
+    return selected_rows, totag_list, header
 
-             all_lists = all_lists + top
-
-    tagging_files = {row[0][0] for row in all_lists }
-    file_exists = (file_location/"tagging.csv").is_file()
-    with (file_location/"totag.csv").open(mode='w', newline='') as untagged, (file_location/"tagging.csv").open(mode='a', newline='') as tagging:
-        untagged_writer, tagging_writer = csv.writer(untagged), csv.writer(tagging)
-        untagged_writer.writerow(header)
+def write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location_togging, header):
+    selected_filenames = {row[0][FILENAME_LOCATION] for row in selected_rows}
+    file_exists = file_location_togging.is_file()
+    with file_location_totag.open(mode='w', newline='') as totag, file_location_togging.open(mode='a', newline='') as tagging:
+        totag_writer, tagging_writer = csv.writer(totag), csv.writer(tagging)
+        totag_writer.writerow(header)
         if not file_exists:
             tagging_writer.writerow(header)
-        for row in csv_list:
-            (tagging_writer if row[0] in tagging_files else untagged_writer).writerow(row)
-    return all_lists
+        for row in totag_list:
+            (tagging_writer if row[FILENAME_LOCATION] in selected_filenames else totag_writer).writerow(row)
 
 def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None,
                      tag_names = ["stamp"], max_tags_per_pixel=None, config_class_balance=None, colors = None):
-    all_rows = get_top_rows(file_location, num_rows, user_folders, pick_max, tag_names, config_class_balance)
+    file_location_totag = (file_location / "totag.csv")
+    file_location_togging = (file_location / "tagging.csv")
+    selected_rows, totag_list, header = get_top_rows(file_location_totag, num_rows, user_folders, pick_max, tag_names, config_class_balance)
+
+    write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location_togging, header)
+
     # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
     # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
     if colors is None:
         colors = ['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for
             r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]]
 
-    make_vott_output(all_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
+    make_vott_output(selected_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
                      tag_names=tag_names,  tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
 
 if __name__ == "__main__":
@@ -323,11 +287,13 @@ if __name__ == "__main__":
     ideal_class_balance = config_file["ideal_class_balance"].split(",")
     if file_date:
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
+    tag_names = add_bkg_class_name(config_file["classes"].split(","))
+    ideal_class_balance = parse_class_balance_setting(config_file.get("ideal_class_balance"), len(tag_names))
     create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "",
                      config_file["tagging_location"], blob_credentials=(block_blob_service, container_name),
-                     tag_names=config_file["classes"].split(","),
+                     tag_names= tag_names,
                      max_tags_per_pixel=config_file.get("max_tags_per_pixel"),
-                     config_class_balance =config_file.get("ideal_class_balance"))
+                     config_class_balance = ideal_class_balance)
     container_name = config_file["label_container_name"]
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("tagging",int(time.time() * 1000),"csv"), str(csv_file_loc/"tagging.csv"))
     block_blob_service.create_blob_from_path(container_name, "{}_{}.{}".format("totag",int(time.time() * 1000),"csv"), str(csv_file_loc/"totag.csv"))

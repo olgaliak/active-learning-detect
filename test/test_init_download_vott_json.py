@@ -16,7 +16,7 @@ from config import Config
 tag_dir = str(Path.cwd().parent / "tag")
 if tag_dir not in sys.path:
     sys.path.append(tag_dir)
-from download_vott_json import create_vott_json, get_top_rows, get_top_row_classmap
+from download_vott_json import create_vott_json, get_top_rows, filter_top, add_bkg_class_name, parse_class_balance_setting
 
 
 class DownloadInitVOTTJSONTestCase(unittest.TestCase):
@@ -36,20 +36,23 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
 
 
     def tearDown(self):
-        # shutil.rmtree(self.tagging_location, ignore_errors=True)
-        # shutil.rmtree("Images", ignore_errors=True)
-        #
-        # if os.path.exists("totag.csv"):
-        #     os.remove("totag.csv")
-        #
-        # if os.path.exists("tagging.csv"):
-        #         os.remove("tagging.csv")
-        # if os.path.exists("Images.json"):
-        #     os.remove("Images.json")
+        shutil.rmtree(self.tagging_location, ignore_errors=True)
+        shutil.rmtree("Images", ignore_errors=True)
+
+        if os.path.exists("totag.csv"):
+            os.remove("totag.csv")
+
+        if os.path.exists("tagging.csv"):
+                os.remove("tagging.csv")
+        if os.path.exists("Images.json"):
+            os.remove("Images.json")
+
+        if os.path.exists("init_totag.csv"):
+            os.remove("init_totag.csv")
 
         print("Tear down")
 
-    @unittest.skip
+
     def test_create_vott_json(self):
         # prepare file
         shutil.copyfile("./untagged_cow.csv", "totag.csv")
@@ -60,14 +63,16 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         user_folders = False
         pick_max = True
         tagging_location = "."
-        classesIDs = list(range(1, 91))
-        classes = ','.join(str(x) for x in classesIDs)
+        classesIDs = list(str(range(1, 91)))
+        tag_names = add_bkg_class_name(classesIDs)
+
+        ideal_class_balance = parse_class_balance_setting(None, len(tag_names))
         create_vott_json(csv_file_loc, N_IMAGES, user_folders,
                          pick_max, FOLDER,
                          tagging_location, blob_credentials = None,
-                         tag_names= classes.split(','),
+                         tag_names= tag_names,
                          max_tags_per_pixel= 2,
-                         config_class_balance=None
+                         config_class_balance=ideal_class_balance
                          )
         #self.assertEqual(filecmp.cmp('Images.json', 'Images_source.json'), True, "generated VOTT json is correct")
 
@@ -79,23 +84,26 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
             json_config = json.load(read_file)
         classmap = json_config["classmap"]
         ideal_balance_list = []
-        tag_names = []
+        new_tag_names = []
         init_tag_names = []
         class_map_dict = {}
         for m in classmap:
             ideal_balance_list.append(m['balance'])
-            tag_names.append(m['map'])
+            new_tag_names.append(m['map'])
             init_tag_names.append(m['initclass'])
             class_map_dict[m['initclass']] = m['map']
         ideal_balance = ','.join(ideal_balance_list)
         unmapclass_list = json_config["unmapclass"]
         default_class = json_config["default_class"]
-        csv_file_loc = Path('.')
-        rows = get_top_row_classmap(csv_file_loc, num_rows = 10, user_folders = True,
-                                    pick_max = False, tag_names = tag_names, init_tag_names = init_tag_names,
-                                    config_class_balance = ideal_balance,
-                                    unmapclass_list = unmapclass_list, default_class = default_class,
-                                    class_map_dict = class_map_dict)
+        file_location_totag = Path('.')/"init_totag.csv"
+        new_tag_names = add_bkg_class_name(new_tag_names)
+        ideal_class_balance = parse_class_balance_setting(ideal_balance, len(new_tag_names))
+
+        rows, _, _ = get_top_rows(file_location_totag, 10,  True,  False,
+                             init_tag_names,  ideal_class_balance,
+                            filter_top,
+                            unmapclass_list, init_tag_names, class_map_dict, default_class)
+
         expected_rows = np.load("init_class_get_rows_min.npy")
         self.assertEqual((rows == expected_rows).all(), True)
         print("")

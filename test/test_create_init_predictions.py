@@ -44,9 +44,7 @@ class CreateInitPredictionsTestCase(unittest.TestCase):
         make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged,
                         user_folders = True)
 
-        shutil.copyfile("./untagged.csv", "untagged_cow.csv")
-
-        #self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_cow.csv'), True, "generated untagged.csv is correct")
+        self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_cow.csv'), True, "generated untagged.csv is correct")
 
 if __name__ == '__main__':
     unittest.main()
