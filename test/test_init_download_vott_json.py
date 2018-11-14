@@ -16,7 +16,7 @@ from config import Config
 tag_dir = str(Path.cwd().parent / "tag")
 if tag_dir not in sys.path:
     sys.path.append(tag_dir)
-from download_vott_json import create_vott_json, get_top_rows, filter_top, add_bkg_class_name, parse_class_balance_setting
+from download_vott_json import create_init_vott_json, create_vott_json, get_top_rows, filter_top, add_bkg_class_name, remove_bkg_class_name, parse_class_balance_setting
 
 
 class DownloadInitVOTTJSONTestCase(unittest.TestCase):
@@ -39,6 +39,11 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         shutil.rmtree(self.tagging_location, ignore_errors=True)
         shutil.rmtree("Images", ignore_errors=True)
 
+        shutil.rmtree("test_workdir/camera_images", ignore_errors=True)
+        shutil.rmtree("test_workdir90", ignore_errors=True)
+        if os.path.exists(r"test_workdir/camera_images.json"):
+            os.remove(r"test_workdir/camera_images.json")
+
         if os.path.exists("totag.csv"):
             os.remove("totag.csv")
 
@@ -53,7 +58,7 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         print("Tear down")
 
 
-    def test_create_vott_json(self):
+    def test_create_vott_json_90(self):
         # prepare file
         shutil.copyfile("./untagged_cow.csv", "totag.csv")
 
@@ -63,7 +68,8 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         user_folders = False
         pick_max = True
         tagging_location = "."
-        classesIDs = list(str(range(1, 91)))
+        tagging_location = "test_workdir90"
+        classesIDs =  [str(i) for i in (range(1, 91))]
         tag_names = add_bkg_class_name(classesIDs)
 
         ideal_class_balance = parse_class_balance_setting(None, len(tag_names))
@@ -74,7 +80,10 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
                          max_tags_per_pixel= 2,
                          config_class_balance=ideal_class_balance
                          )
-        #self.assertEqual(filecmp.cmp('Images.json', 'Images_source.json'), True, "generated VOTT json is correct")
+
+
+
+        self.assertEqual(filecmp.cmp(os.path.join(tagging_location, 'Images.json'), 'Images_source_workdir90.json'), True, "generated VOTT json is correct")
 
     def test_get_filtered(self):
         shutil.copyfile("./untagged_cow.csv", "init_totag.csv")
@@ -108,7 +117,52 @@ class DownloadInitVOTTJSONTestCase(unittest.TestCase):
         self.assertEqual((rows == expected_rows).all(), True)
         print("")
 
+    def test_create_vott_json(self):
+        # prepare file
+        shutil.copyfile("./untagged_cow.csv", "init_totag.csv")
 
+        csv_file_loc = Path('.')
+        FOLDER = "camera_images"
+        N_IMAGES =  10
+        user_folders = True
+        pick_max = False
+        tagging_location = "test_workdir"
+
+        json_fn = "init_classes_map.json"
+        json_config = None
+        with open(json_fn, "r") as read_file:
+            json_config = json.load(read_file)
+        classmap = json_config["classmap"]
+        ideal_balance_list = []
+        new_tag_names = []
+        init_tag_names = []
+        class_map_dict = {}
+        for m in classmap:
+            ideal_balance_list.append(m['balance'])
+            new_tag_names.append(m['map'])
+            init_tag_names.append(m['initclass'])
+            class_map_dict[m['initclass']] = m['map']
+
+        unmapclass_list = json_config["unmapclass"]
+        default_class = json_config["default_class"]
+        ideal_balance = ','.join(ideal_balance_list)
+        new_tag_names.append(default_class)
+        new_tag_names = remove_bkg_class_name(new_tag_names)
+        ideal_class_balance = parse_class_balance_setting(ideal_balance, len(init_tag_names))
+
+        create_init_vott_json(csv_file_loc , N_IMAGES, user_folders,
+                         pick_max,
+                         "", #image loc
+                         tagging_location,
+                         None, #blob creds
+                         init_tag_names,
+                         new_tag_names,
+                         2, #max pix
+                         ideal_class_balance,
+                         ["#e9f1fe", "#33BBFF", "#FFFF19"], #colors
+                         unmapclass_list, init_tag_names, class_map_dict, default_class )
+
+        self.assertEqual(filecmp.cmp(os.path.join( tagging_location, FOLDER +'.json'),   FOLDER + '_source.json'), True, "generated VOTT json is correct")
 
 if __name__ == '__main__':
     unittest.main()

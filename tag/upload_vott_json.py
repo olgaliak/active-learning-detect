@@ -79,7 +79,6 @@ def select_jsons(image_directory, user_folders, file_location):
                 tagging_writer.writerow(row)
 
 if __name__ == "__main__":
-    #select_jsons(r"C:\Users\t-yapand\Desktop\GAUCC",r"C:\Users\t-yapand\Desktop\GAUCC.json",True,r"C:\Users\t-yapand\Desktop\GAUCC1_1533070038606.csv")
     from azure.storage.blob import BlockBlobService
     import sys
     import os    

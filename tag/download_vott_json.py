@@ -11,6 +11,18 @@ import numpy as np
 from io import StringIO
 from math import isclose
 
+import re
+import time
+from azure.storage.blob import BlockBlobService
+import sys
+import os
+
+# Allow us to import utils
+config_dir = str(Path.cwd().parent / "utils")
+if config_dir not in sys.path:
+    sys.path.append(config_dir)
+from config import Config
+import blob_utils  as butils
 
 CONFIDENCE_LOCATION = -1
 TAG_CONFIDENCE_LOCATION = -2
@@ -22,6 +34,8 @@ TAG_LOCATION = 1
 TAG_STARTING_LOCATION = 2
 # Should be equal to width_location
 TAG_ENDING_LOCATION = 7
+
+random.seed(42)
 
 def  add_bkg_class_name(tag_names):
     #Add class for background
@@ -35,99 +49,123 @@ def remove_bkg_class_name(tag_names):
         tag_names.remove("NULL")
     return  tag_names
 
-def make_vott_output(all_predictions, output_location, user_folders, image_loc, blob_credentials = None,
+def get_image_loc(prediction, user_folders, image_loc):
+    if user_folders:
+        if image_loc == "":
+            image_loc = Path(prediction[0][FOLDER_LOCATION]).name
+        else:
+            image_loc = image_loc + "/" + Path(prediction[0][FOLDER_LOCATION]).name
+
+    return image_loc
+
+def get_output_location(prediction, user_folders, output_location_param):
+    if user_folders:
+        folder_name = Path(prediction[0][FOLDER_LOCATION]).name
+        output_location = Path(output_location_param)/folder_name
+    else:
+        output_location = Path(output_location_param)/"Images"
+    return output_location
+
+def make_vott_output(all_predictions, output_location_param, user_folders, image_loc_param, blob_credentials = None,
         tag_names: List[str] = ["stamp"], tag_colors: List[str] = "#ed1010", max_tags_per_pixel=None):
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
-    if user_folders:
-        folder_name = Path(all_predictions[0][0][FOLDER_LOCATION]).name
-        output_location = Path(output_location)/folder_name
-    else:
-        output_location = Path(output_location)/"Images"
+
 
     tag_names = remove_bkg_class_name(tag_names)
 
-    output_location.mkdir(parents=True, exist_ok=True)
+
     using_blob_storage = blob_credentials is not None
-    if using_blob_storage:
-        blob_service, container_name = blob_credentials
-    else:
-        image_loc = Path(image_loc)
-    if user_folders:
+
+    dict_predictions_per_folder =   {} #defaultdict(list)
+    i = 0
+    n_err = 0
+    for prediction in all_predictions[:]:
+        #print(i)
+        image_loc = get_image_loc(prediction, user_folders, image_loc_param)
+        output_location = get_output_location(prediction, user_folders, output_location_param)
+        if output_location not in dict_predictions_per_folder:
+            output_location.mkdir(parents=True, exist_ok=True)
+            dict_predictions_per_folder[output_location] = []
         if using_blob_storage:
-            if image_loc == "":
-                image_loc = Path(all_predictions[0][0][FOLDER_LOCATION]).name
-            else:
-                image_loc = image_loc + "/" + Path(all_predictions[0][0][FOLDER_LOCATION]).name
-        else:
-            image_loc = image_loc/all_predictions[0][0][FOLDER_LOCATION]
-    for prediction in all_predictions:
-        if using_blob_storage:
+            blob_dest = str(output_location / prediction[0][FILENAME_LOCATION])
             if image_loc:
-                print(image_loc + "/" + prediction[0][FILENAME_LOCATION])
-                blob_service.get_blob_to_path(container_name, image_loc + "/" + prediction[0][FILENAME_LOCATION],
-                    str(output_location/prediction[0][FILENAME_LOCATION]))
+                blob_name = image_loc + "/" + prediction[0][FILENAME_LOCATION]
             else:
-                print(prediction[0][FILENAME_LOCATION])
-                blob_service.get_blob_to_path(container_name, prediction[0][FILENAME_LOCATION],
-                    str(output_location/prediction[0][FILENAME_LOCATION]))
+                blob_name = prediction[0][FILENAME_LOCATION]
+
+            if not butils.attempt_get_blob(blob_credentials, blob_name, blob_dest):
+                all_predictions.remove(prediction)
+                n_err = n_err + 1
+                continue;
         else:
-            shutil.copy(str(image_loc/prediction[0][FILENAME_LOCATION]), str(output_location))
-    all_predictions.sort(key=lambda x: x[0][FILENAME_LOCATION])
-    dirjson = {}
-    dirjson["frames"] = {}
-    for i, predictions in enumerate(all_predictions):
-        all_frames = []
-        set_predictions = defaultdict(list)
-        if max_tags_per_pixel is None:
-            for prediction in predictions:
-                x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
-                if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
-                    x_1 = int(x_1*width)
-                    x_2 = int(x_2*width)
-                    y_1 = int(y_1*height)
-                    y_2 = int(y_2*height)
-                    set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
-        else:
-            if predictions:
-                num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
-                for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
+            shutil.copy(os.path.join(image_loc, prediction[0][FILENAME_LOCATION]), str(output_location))
+
+        dict_predictions_per_folder[output_location].append(prediction)
+        i = i + 1
+
+    print("Dowloaded {0} files. Number of errors: {1}", i, n_err)
+
+#TBD: enum through dict and make json per folder!
+    for output_location, folder_predictions in dict_predictions_per_folder.items():
+        folder_predictions.sort(key=lambda x: x[0][FILENAME_LOCATION])
+        dirjson = {}
+        dirjson["frames"] = {}
+        for i, predictions in enumerate(folder_predictions):
+            all_frames = []
+            set_predictions = defaultdict(list)
+            if max_tags_per_pixel is None:
+                for prediction in predictions:
                     x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
                     if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
                         x_1 = int(x_1*width)
                         x_2 = int(x_2*width)
                         y_1 = int(y_1*height)
                         y_2 = int(y_2*height)
-                        if np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_pixel:
-                            num_tags[y_1:y_2, x_1:x_2]+=1
-                            set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
-        for j,(coordinates, tags) in enumerate(set_predictions.items(), 1):
-            # filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory
-            x_1, x_2, y_1, y_2, height, width = coordinates
-            curframe = {}
-            curframe["x1"] = x_1
-            curframe["y1"] = y_1
-            curframe["x2"] = x_2
-            curframe["y2"] = y_2
-            curframe["id"] = j
-            curframe["width"] = width
-            curframe["height"] = height
-            curframe["type"] = "Rectangle"
-            curframe["tags"] = tags
-            curframe["name"] = j
-            all_frames.append(curframe)
-        dirjson["frames"][i] = all_frames
-    dirjson["framerate"] = "1"
-    dirjson["inputTags"] = ",".join(tag_names)
-    dirjson["suggestiontype"] = "track"
-    dirjson["scd"] = False
-    dirjson["visitedFrames"] = list(range(len(all_predictions)))
-    dirjson["tag_colors"] = tag_colors
-    with open(str(output_location)+".json","w") as json_out:
-        json.dump(dirjson, json_out, sort_keys = True)
+                        set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+            else:
+                if predictions:
+                    num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
+                    for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
+                        x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
+                        if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
+                            x_1 = int(x_1*width)
+                            x_2 = int(x_2*width)
+                            y_1 = int(y_1*height)
+                            y_2 = int(y_2*height)
+                            if np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_pixel:
+                                num_tags[y_1:y_2, x_1:x_2]+=1
+                                set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+            for j,(coordinates, tags) in enumerate(set_predictions.items(), 1):
+                # filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory
+                x_1, x_2, y_1, y_2, height, width = coordinates
+                curframe = {}
+                curframe["x1"] = x_1
+                curframe["y1"] = y_1
+                curframe["x2"] = x_2
+                curframe["y2"] = y_2
+                curframe["id"] = j
+                curframe["width"] = width
+                curframe["height"] = height
+                curframe["type"] = "Rectangle"
+                curframe["tags"] = tags
+                curframe["name"] = j
+                all_frames.append(curframe)
+            dirjson["frames"][i] = all_frames
+        dirjson["framerate"] = "1"
+        dirjson["inputTags"] = ",".join(tag_names)
+        dirjson["suggestiontype"] = "track"
+        dirjson["scd"] = False
+        dirjson["visitedFrames"] = list(range(len(all_predictions)))
+        dirjson["tag_colors"] = tag_colors
+        with open(str(output_location)+".json","w") as json_out:
+            json.dump(dirjson, json_out, sort_keys = True)
 
 
 def select_rows(arr_image_data, num_rows, is_largest):
+    total_rows = len(arr_image_data)
+    if num_rows > total_rows:
+        num_rows = total_rows
     if is_largest:
         top = nlargest(num_rows, arr_image_data,
                        key=lambda x: float(x[0][CONFIDENCE_LOCATION]))
@@ -242,6 +280,30 @@ def write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location
         for row in totag_list:
             (tagging_writer if row[FILENAME_LOCATION] in selected_filenames else totag_writer).writerow(row)
 
+
+def create_init_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials,
+                     tag_names, new_tag_names, max_tags_per_pixel=None, config_class_balance=None, colors=None, *args):
+    print("Creting VOTT json using pre-init classes")
+    file_location_init_totag = (file_location / "init_totag.csv")
+    file_location_tagging = (file_location / "tagging.csv")
+    file_location_totag = (file_location / "totag.csv")
+    selected_rows, totag_list, header = get_top_rows(file_location_init_totag, num_rows, user_folders, pick_max, tag_names,
+                                                     config_class_balance, filter_top, *args)
+
+    write_tag_csvs(selected_rows, totag_list, file_location_init_totag, file_location_tagging, header)
+    write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location_tagging, header)
+    # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
+    # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
+    if colors is None:
+        colors = ['#%02x%02x%02x' % (int(256 * r), int(256 * g), int(256 * b)) for
+                  r, g, b in
+                  [colorsys.hls_to_rgb(random.random(), 0.8 + random.random() / 5.0, 0.75 + random.random() / 4.0) for _
+                   in tag_names]]
+
+    make_vott_output(selected_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
+                     tag_names=new_tag_names, tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
+
+
 def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc, output_location, blob_credentials=None,
                      tag_names = ["stamp"], max_tags_per_pixel=None, config_class_balance=None, colors = None):
     file_location_totag = (file_location / "totag.csv")
@@ -260,19 +322,8 @@ def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc,
                      tag_names=tag_names,  tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
 
 if __name__ == "__main__":
-    #create_vott_json(r"C:\Users\t-yapand\Desktop\GAUCC1_1533070087147.csv",20, True, r"C:\Users\t-yapand\Desktop\GAUCC", r"C:\Users\t-yapand\Desktop\Output\GAUCC")
-    import re
-    import time
-    from azure.storage.blob import BlockBlobService
-    import sys
-    import os
-    # Allow us to import utils
-    config_dir = str(Path.cwd().parent / "utils")
-    if config_dir not in sys.path:
-        sys.path.append(config_dir)
-    from config import Config
     if len(sys.argv)<3:
-        raise ValueError("Need to specify number of images (first arg) and config file (second arg)")
+        raise ValueError("Need to specify number of images (first arg) and config file (second arg). Optionally provide psth to init_classes_map.json")
     config_file = Config.parse_file(sys.argv[2])
     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"], account_key=config_file["AZURE_STORAGE_KEY"])
     container_name = config_file["label_container_name"]
@@ -289,7 +340,38 @@ if __name__ == "__main__":
         block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
     tag_names = add_bkg_class_name(config_file["classes"].split(","))
     ideal_class_balance = parse_class_balance_setting(config_file.get("ideal_class_balance"), len(tag_names))
-    create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "",
+    if len(sys.argv)>3 and 'json' in sys.argv[2].lower():
+        print("Using init flow and class mapping json")
+        json_fn = sys.argv[2]
+        with open(json_fn, "r") as read_file:
+            json_config = json.load(read_file)
+        classmap = json_config["classmap"]
+        ideal_balance_list = []
+        new_tag_names = []
+        init_tag_names = []
+        class_map_dict = {}
+        for m in classmap:
+            ideal_balance_list.append(m['balance'])
+            new_tag_names.append(m['map'])
+            init_tag_names.append(m['initclass'])
+            class_map_dict[m['initclass']] = m['map']
+        ideal_balance = ','.join(ideal_balance_list)
+        unmapclass_list = json_config["unmapclass"]
+        default_class = json_config["default_class"]
+        file_location_totag = Path('.')/"init_totag.csv"
+        new_tag_names = add_bkg_class_name(new_tag_names)
+        ideal_class_balance = parse_class_balance_setting(ideal_balance, len(new_tag_names))
+
+        create_init_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"] == "True",
+                         config_file["pick_max"] == "True", "",
+                         config_file["tagging_location"], (block_blob_service, container_name),
+                         init_tag_names,
+                         config_file.get("max_tags_per_pixel"),
+                         ideal_class_balance,
+                         unmapclass_list, init_tag_names, class_map_dict, default_class)
+
+    else:
+        create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "",
                      config_file["tagging_location"], blob_credentials=(block_blob_service, container_name),
                      tag_names= tag_names,
                      max_tags_per_pixel=config_file.get("max_tags_per_pixel"),
