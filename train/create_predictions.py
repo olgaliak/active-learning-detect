@@ -83,6 +83,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
     basedir = Path(basedir)
     CV2_COLOR_LOAD_FLAG = 1
     all_predictions = []
+    all_tagged = []
     if user_folders:
         # TODO: Cross reference with ToTag
         # download latest tagging and tagged

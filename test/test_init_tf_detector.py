@@ -62,7 +62,7 @@ class TFDetectorTestCase(unittest.TestCase):
         all_predictions = detector.predict(all_images, min_confidence=0.5)
 
         self.assertEqual(len(all_predictions), len(all_image_files))
-        np.save('all_predictions_cow', all_predictions)
+        #np.save('all_predictions_cow', all_predictions)
 
 if __name__ == '__main__':
     unittest.main()
