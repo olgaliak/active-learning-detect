@@ -14,7 +14,7 @@ from config import Config
 tag_dir = str(Path.cwd().parent / "tag")
 if tag_dir not in sys.path:
     sys.path.append(tag_dir)
-from download_vott_json import create_vott_json, get_top_rows, add_bkg_class_name, parse_class_balance_setting
+from download_vott_json import create_vott_json, get_top_rows, add_bkg_class_name, parse_class_balance_setting, make_vott_output
 
 
 class DownloadVOTTJSONTestCase(unittest.TestCase):
@@ -263,6 +263,8 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
                          config_class_balance=ideal_class_balance,
                          colors = ["#e9f1fe", "#f3e9ff"])
         self.assertEqual(filecmp.cmp('Images.json', 'Images_source.json'), True, "generated VOTT json is correct")
+
+
 
 if __name__ == '__main__':
     unittest.main()

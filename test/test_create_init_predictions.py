@@ -16,10 +16,30 @@ train_dir = str(Path.cwd().parent / "train")
 if train_dir not in sys.path:
     sys.path.append(train_dir)
 from create_predictions import get_suggestions, make_csv_output
+from tf_detector import TFDetector
+import six.moves.urllib as urllib
+import tarfile
+TEST_WORKDIR = "test_workdir"
 
 class CreateInitPredictionsTestCase(unittest.TestCase):
     def setUp(self):
-       print("Test setup")
+        DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
+        MODEL_NAME = 'faster_rcnn_resnet101_coco_2018_01_28'  # 'ssd_mobilenet_v1_coco_2017_11_17'
+        MODEL_FILE = MODEL_NAME + '.tar.gz'
+        url = DOWNLOAD_BASE + MODEL_FILE
+        MODEL_FILE_DST = os.path.join(TEST_WORKDIR, MODEL_FILE)
+        self.froz_graph = os.path.join(TEST_WORKDIR, MODEL_NAME, "frozen_inference_graph.pb")
+        if not os.path.exists(self.froz_graph):
+            if not os.path.exists(MODEL_FILE_DST):
+                print("Downloading model: ", url)
+                opener = urllib.request.URLopener()
+                opener.retrieve(url, MODEL_FILE_DST)
+            print("Unzipping: ", MODEL_FILE_DST)
+            tar_file = tarfile.open(MODEL_FILE_DST)
+            for file in tar_file.getmembers():
+                file_name = os.path.basename(file.name)
+                if 'frozen_inference_graph.pb' in file_name:
+                    tar_file.extract(file, TEST_WORKDIR)
 
     def tearDown(self):
         if os.path.exists("untagged.csv"):
@@ -45,6 +65,22 @@ class CreateInitPredictionsTestCase(unittest.TestCase):
                         user_folders = True)
 
         self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_cow.csv'), True, "generated untagged.csv is correct")
+
+
+    def test_get_suggestions(self):
+        classesIDs = list(range(1, 91))
+        classes = ','.join(str(x) for x in classesIDs)
+        cur_detector = TFDetector(classes.split(','), self.froz_graph)
+        image_dir = "test_workdir_init_pred"
+        untagged_output = 'untagged.csv'
+        tagged_output = 'tagged_preds.csv'
+        cur_tagged = None
+        cur_tagging = None
+        get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, cur_tagged, cur_tagging,
+                        filetype="*.jpg", min_confidence=0.5,
+                        user_folders=True)
+        self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_cow.csv'), True, "generated untagged.csv is correct")
+
 
 if __name__ == '__main__':
     unittest.main()
