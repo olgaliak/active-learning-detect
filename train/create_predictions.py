@@ -154,13 +154,25 @@ if __name__ == "__main__":
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
     cur_tagged = None
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
-        cur_tagged = "tagged.csv"
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     cur_tagging = None
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
-        cur_tagging = "tagging.csv"
-    cur_detector = TFDetector(config_file["classes"].split(","), str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb"))
+    classes = []
+    model = None
+    if len(sys.argv) > 3 and (sys.argv[2].lower() =='init_pred'):
+        print("Using MS COCO pretrained model to detect known 90 classes. For class id <-> name mapping check this file: https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_label_map.pbtxt")
+        model = sys.argv[3]
+        print("Using model: " + model)
+        classesIDs = list(range(1, 91))
+        classes = ','.join(str(x) for x in classesIDs)
+    else:
+        classes = ["classes"].split(",")
+        model = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
+        if file_date:
+            block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
+            cur_tagged = "tagged.csv"
+        file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+        if file_date:
+            block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+            cur_tagging = "tagging.csv"
+
+    cur_detector = TFDetector(classes, model)
     get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, cur_tagged, cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
