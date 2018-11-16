@@ -37,17 +37,21 @@ TAG_ENDING_LOCATION = 7
 
 random.seed(42)
 
-def  add_bkg_class_name(tag_names):
-    #Add class for background
-    if "NULL" not in tag_names:
-        tag_names = tag_names + ["NULL"]
+def add_class_name(tag_names, name):
+    if name not in tag_names:
+        tag_names = tag_names + [name]
     return  tag_names
 
+def remove_class_name(tag_names, name):
+    if name in tag_names:
+        tag_names.remove(name)
+    return tag_names
+
+def  add_bkg_class_name(tag_names):
+    return add_class_name(tag_names, "NULL")
+
 def remove_bkg_class_name(tag_names):
-    #Add class for background
-    if "NULL" in tag_names:
-        tag_names.remove("NULL")
-    return  tag_names
+    return  remove_class_name(tag_names, "NULL")
 
 def get_image_loc(prediction, user_folders, image_loc):
     if user_folders:
@@ -71,9 +75,13 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
     if max_tags_per_pixel is not None:
         max_tags_per_pixel = int(max_tags_per_pixel)
 
-
     tag_names = remove_bkg_class_name(tag_names)
 
+    # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
+    # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
+    if tag_colors is None:
+        tag_colors = ['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for
+            r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]]
 
     using_blob_storage = blob_credentials is not None
 
@@ -87,6 +95,7 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
         if output_location not in dict_predictions_per_folder:
             output_location.mkdir(parents=True, exist_ok=True)
             dict_predictions_per_folder[output_location] = []
+            print("Created dir ", str(output_location))
         if using_blob_storage:
             blob_dest = str(output_location / prediction[0][FILENAME_LOCATION])
             if image_loc:
@@ -104,7 +113,7 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
         dict_predictions_per_folder[output_location].append(prediction)
         i = i + 1
 
-    print("Dowloaded {0} files. Number of errors: {1}", i, n_err)
+    print("Dowloaded {0} files. Number of errors: {1}".format(i, n_err))
 
 #TBD: enum through dict and make json per folder!
     for output_location, folder_predictions in dict_predictions_per_folder.items():
@@ -292,14 +301,9 @@ def create_init_vott_json(file_location, num_rows, user_folders, pick_max, image
 
     write_tag_csvs(selected_rows, totag_list, file_location_init_totag, file_location_tagging, header)
     write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location_tagging, header)
-    # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
-    # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
-    if colors is None:
-        colors = ['#%02x%02x%02x' % (int(256 * r), int(256 * g), int(256 * b)) for
-                  r, g, b in
-                  [colorsys.hls_to_rgb(random.random(), 0.8 + random.random() / 5.0, 0.75 + random.random() / 4.0) for _
-                   in tag_names]]
 
+    default_class = args[-1]
+    new_tag_names = add_class_name(new_tag_names, default_class)
     make_vott_output(selected_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
                      tag_names=new_tag_names, tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
 
@@ -312,14 +316,8 @@ def create_vott_json(file_location, num_rows, user_folders, pick_max, image_loc,
 
     write_tag_csvs(selected_rows, totag_list, file_location_totag, file_location_togging, header)
 
-    # The tag_colors list generates random colors for each tag. To ensure that these colors stand out / are easy to see on a picture, the colors are generated
-    # in the hls format, with the random numbers biased towards a high luminosity (>=.8) and saturation (>=.75).
-    if colors is None:
-        colors = ['#%02x%02x%02x' % (int(256*r), int(256*g), int(256*b)) for
-            r,g,b in [colorsys.hls_to_rgb(random.random(),0.8 + random.random()/5.0, 0.75 + random.random()/4.0) for _ in tag_names]]
-
     make_vott_output(selected_rows, output_location, user_folders, image_loc, blob_credentials=blob_credentials,
-                     tag_names=tag_names,  tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
+                     tag_names= tag_names,  tag_colors=colors, max_tags_per_pixel=max_tags_per_pixel)
 
 if __name__ == "__main__":
     if len(sys.argv)<3:
@@ -331,18 +329,10 @@ if __name__ == "__main__":
     csv_file_loc = Path(config_file["tagging_location"])
     #csv_file_loc =  #Path("test_totag.csv")
     csv_file_loc.mkdir(parents=True, exist_ok=True)
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'totag_(.*).csv', blob.name)]
-    block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"totag.csv"))
-    container_name = config_file["image_container_name"]
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
-    ideal_class_balance = config_file["ideal_class_balance"].split(",")
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], str(csv_file_loc/"tagging.csv"))
-    tag_names = add_bkg_class_name(config_file["classes"].split(","))
-    ideal_class_balance = parse_class_balance_setting(config_file.get("ideal_class_balance"), len(tag_names))
-    if len(sys.argv)>3 and 'json' in sys.argv[2].lower():
+
+    if len(sys.argv)>3 and 'json' in sys.argv[3].lower():
         print("Using init flow and class mapping json")
-        json_fn = sys.argv[2]
+        json_fn = sys.argv[3]
         with open(json_fn, "r") as read_file:
             json_config = json.load(read_file)
         classmap = json_config["classmap"]
@@ -358,21 +348,40 @@ if __name__ == "__main__":
         ideal_balance = ','.join(ideal_balance_list)
         unmapclass_list = json_config["unmapclass"]
         default_class = json_config["default_class"]
-        file_location_totag = Path('.')/"init_totag.csv"
+        file_location_totag = csv_file_loc / "init_totag.csv"
         new_tag_names = add_bkg_class_name(new_tag_names)
         ideal_class_balance = parse_class_balance_setting(ideal_balance, len(new_tag_names))
 
+        file_date = [(blob.name, blob.properties.last_modified) for blob in
+                     block_blob_service.list_blobs(container_name) if re.match(r'init_totag_(.*).csv', blob.name)]
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x: x[1])[0],
+                                            str(file_location_totag))
+
         create_init_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"] == "True",
                          config_file["pick_max"] == "True", "",
-                         config_file["tagging_location"], (block_blob_service, container_name),
+                         config_file["tagging_location"], (block_blob_service, config_file["image_container_name"]),
                          init_tag_names,
+                         new_tag_names,
                          config_file.get("max_tags_per_pixel"),
                          ideal_class_balance,
+                         None, #colors
                          unmapclass_list, init_tag_names, class_map_dict, default_class)
 
     else:
+        file_date = [(blob.name, blob.properties.last_modified) for blob in
+                     block_blob_service.list_blobs(container_name) if re.match(r'totag_(.*).csv', blob.name)]
+        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x: x[1])[0],
+                                            str(csv_file_loc / "totag.csv"))
+        file_date = [(blob.name, blob.properties.last_modified) for blob in
+                     block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+        ideal_class_balance = config_file["ideal_class_balance"].split(",")
+        if file_date:
+            block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x: x[1])[0],
+                                                str(csv_file_loc / "tagging.csv"))
+        tag_names = add_bkg_class_name(config_file["classes"].split(","))
+        ideal_class_balance = parse_class_balance_setting(config_file.get("ideal_class_balance"), len(tag_names))
         create_vott_json(csv_file_loc, int(sys.argv[1]), config_file["user_folders"]=="True", config_file["pick_max"]=="True", "",
-                     config_file["tagging_location"], blob_credentials=(block_blob_service, container_name),
+                     config_file["tagging_location"], blob_credentials=(block_blob_service, config_file["image_container_name"]),
                      tag_names= tag_names,
                      max_tags_per_pixel=config_file.get("max_tags_per_pixel"),
                      config_class_balance = ideal_class_balance)
