@@ -69,8 +69,8 @@ class CreateInitPredictionsTestCase(unittest.TestCase):
 
     def test_get_suggestions(self):
         classesIDs = list(range(1, 91))
-        classes = ','.join(str(x) for x in classesIDs)
-        cur_detector = TFDetector(classes.split(','), self.froz_graph)
+        classes = [str(x) for x in classesIDs]
+        cur_detector = TFDetector(classes, self.froz_graph)
         image_dir = "test_workdir_init_pred"
         untagged_output = 'untagged.csv'
         tagged_output = 'tagged_preds.csv'

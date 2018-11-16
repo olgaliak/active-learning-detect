@@ -162,7 +162,7 @@ if __name__ == "__main__":
         model = sys.argv[3]
         print("Using model: " + model)
         classesIDs = list(range(1, 91))
-        classes = ','.join(str(x) for x in classesIDs)
+        classes = [str(x) for x in classesIDs]
     else:
         classes = ["classes"].split(",")
         model = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
