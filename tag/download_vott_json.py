@@ -122,6 +122,7 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
         dirjson["frames"] = {}
         for i, predictions in enumerate(folder_predictions):
             all_frames = []
+            file_name = ""
             set_predictions = defaultdict(list)
             if max_tags_per_pixel is None:
                 for prediction in predictions:
@@ -132,6 +133,7 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
                         y_1 = int(y_1*height)
                         y_2 = int(y_2*height)
                         set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+                        file_name = prediction[FILENAME_LOCATION]
             else:
                 if predictions:
                     num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
@@ -145,6 +147,7 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
                             if np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_pixel:
                                 num_tags[y_1:y_2, x_1:x_2]+=1
                                 set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+                                file_name = prediction[FILENAME_LOCATION]
             for j,(coordinates, tags) in enumerate(set_predictions.items(), 1):
                 # filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory
                 x_1, x_2, y_1, y_2, height, width = coordinates
@@ -160,12 +163,11 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
                 curframe["tags"] = tags
                 curframe["name"] = j
                 all_frames.append(curframe)
-            dirjson["frames"][i] = all_frames
+            dirjson["frames"][file_name] = all_frames
         dirjson["framerate"] = "1"
         dirjson["inputTags"] = ",".join(tag_names)
         dirjson["suggestiontype"] = "track"
         dirjson["scd"] = False
-        dirjson["visitedFrames"] = list(range(len(all_predictions)))
         dirjson["tag_colors"] = tag_colors
         with open(str(output_location)+".json","w") as json_out:
             json.dump(dirjson, json_out, sort_keys = True)

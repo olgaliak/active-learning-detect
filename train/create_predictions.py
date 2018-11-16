@@ -101,11 +101,13 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
         for row in all_tagged:
             already_tagged[row[FOLDER_LOCATION]].add(row[0])
         subdirs = [subfile for subfile in basedir.iterdir() if subfile.is_dir()]
+        print("subdirs: ", subdirs)
         all_names = []
         all_image_files = [] 
         all_sizes = []
         for subdir in subdirs:
             cur_image_names = list(subdir.rglob(filetype))
+            print("Total image names: ", len(cur_image_names))
             all_image_files += [str(image_name) for image_name in cur_image_names]
             foldername = subdir.stem
             all_names += [(foldername, filename.name) for filename in cur_image_names]
@@ -114,6 +116,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
         all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
         for curindex, image in enumerate(all_image_files):
             all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
+        print("Shape of all_images: ", all_images.shape)
         all_predictions = detector.predict(all_images, min_confidence=min_confidence)
     else:
         with open(cur_tagged, 'r') as file:
