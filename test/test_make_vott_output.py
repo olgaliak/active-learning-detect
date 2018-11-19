@@ -21,9 +21,10 @@ class MakeVOTTOutputTestCase(unittest.TestCase):
     def setUp(self):
         print("no-op")
 
+    # Uncomment code below for "ond-demand' VOTT json creaation using data on blob storage
     # def test_download_catdata(self):
     #     #dowload data from tagged_Abram_small
-    #     config_file = Config.parse_file( r'../workconfigcat.ini')
+    #     config_file = Config.parse_file( r'../workconfig.ini')
     #
     #     block_blob_service = BlockBlobService(account_name=config_file["AZURE_STORAGE_ACCOUNT"],
     #                                           account_key=config_file["AZURE_STORAGE_KEY"])

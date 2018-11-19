@@ -74,14 +74,3 @@ SSH to DSVM, activate needed Tensorflow virtul environment if needed and run:
   ` D:\repo\active-learning-detect\tag>python download_vott_json.py 200 ..\config.ini ..\sample_init_classes_map.json`  
   
   ![Flow](images/VOTT_animal.PNG)  
-
-  
-    
-     
-    
- 
- 
- 
-
-
- 
