@@ -19,7 +19,7 @@ from download_vott_json import create_vott_json, get_top_rows, add_bkg_class_nam
 
 class DownloadVOTTJSONTestCase(unittest.TestCase):
     def setUp(self):
-        self.config_file = Config.parse_file("../workconfig.ini")
+        self.config_file = Config.parse_file("testconfig.ini")
 
         self.tagging_location = self.config_file["tagging_location"] + "_test"
         shutil.rmtree(self.tagging_location, ignore_errors=True)
@@ -170,7 +170,6 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         shutil.copyfile("./totag_source.csv", str(self.totag_csv_file_loc))
 
         N_ROWS = 3
-        N_FILES = 3
         EXPECTED = [[['st1091.png', 'knot', '0.20989896', '0.251748', '0.34986168', '0.3921352', '512', '488', 'board_images_png', '0.99201256', '0.70161'],
                                      ['st1091.png', 'knot', '0.696119', '0.7461088', '0.27078417', '0.33086362', '512', '488', 'board_images_png', '0.9827361', '0.70161'],
                                      ['st1091.png', 'knot', '0.89531857', '0.93743694', '0.4605299', '0.5066802', '512', '488', 'board_images_png', '0.9794672', '0.70161'],
@@ -191,7 +190,7 @@ class DownloadVOTTJSONTestCase(unittest.TestCase):
         ideal_class_balance = parse_class_balance_setting(class_balance, len(tag_names))
         all_rows, _, _ = get_top_rows(self.totag_csv_file_loc, N_ROWS, self.user_folders,
                                       pick_max, tag_names, ideal_class_balance)
-        self.assertEqual(len(all_rows), N_FILES, 'number of rows')
+        #self.assertEqual(len(all_rows), N_FILES, 'number of rows')
         self.assertEqual(all_rows, EXPECTED, 'raw values')
 
     def test_create_vott_json(self):

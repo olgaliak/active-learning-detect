@@ -21,7 +21,7 @@ from download_vott_json import create_init_vott_json, create_vott_json, get_top_
 
 class DownloadInitVOTTJSONTestCase(unittest.TestCase):
     def setUp(self):
-        self.config_file = Config.parse_file("../workconfig.ini")
+        self.config_file = Config.parse_file("testconfig.ini")
 
         self.tagging_location = self.config_file["tagging_location"] + "_test"
         shutil.rmtree(self.tagging_location, ignore_errors=True)
