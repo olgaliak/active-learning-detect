@@ -1,0 +1,21 @@
+{
+  "classmap": [
+    {
+      "initclass": "1",
+      "map": "person",
+      "balance": "0.8"
+    },
+    {
+      "initclass": "19",
+      "map": "horse",
+      "balance": "0.2"
+    },
+    {
+      "initclass": "NULL",
+      "map": "NULL",
+      "balance": "0"
+    }
+  ],
+  "unmapclass":["64","86", "15"],
+  "default_class":"default"
+}

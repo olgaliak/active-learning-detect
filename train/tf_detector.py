@@ -1,7 +1,6 @@
-import re
-
 import numpy as np
 import tensorflow as tf
+
 
 class TFDetector():
 
@@ -39,4 +38,5 @@ class TFDetector():
                 combined = np.concatenate(split_data)
                 non_zero = combined[:,:,0].astype(np.float)>min_confidence
         return [sorted(cur_combined[cur_non_zero].tolist(), reverse=True) for cur_combined, cur_non_zero in zip(combined, non_zero)]
-                                                                                                    
+
+

@@ -1,6 +1,8 @@
 # Active learning + object detection
 Labeling images for object detection is commonly required task to get started with Computer Vision related project.
-Good news that you do not have to label all images  (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process.
+Good news that you do not have to label all images  (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process. 
+Please refer to this blog post that describes Active Learning and semi-automated flow: 
+  [Active Learning for Object Detection in Partnership with Conservation Metrics](https://www.microsoft.com/developerblog/2018/11/06/active-learning-for-object-detection/)
 We will use Transfer Learning and Active Learning as core Machine Learning  components of the pipeline.
  -- Transfer Learning: use powerful pre-trained on big dataset (COCO) model as a startining point for fine-tuning foe needed classes.
  -- Active Learning: human annotator labels small set of images (set1), trains Object Detection Model  (model1) on this set1 and then uses model1 to predict bounding boxes on images (thus pre-labeling those). Human annotator reviews mode1's predictions where the model was less confident -- and thus comes up with new set of images -- set2. Next phase will be to train more powerful model2 on bigger train set that includes set1 and set2 and use model2 prediction results as draft of labeled set3…
@@ -27,6 +29,11 @@ There is config.ini that needs to be updated with details like blob storage conn
 # Automated pipeline
 More details TBD.  
 Basically the idea is to kick off Active Learning cycle with model retaining as soon as human annotator revises new set of images.
+
+# Notes before we get started 
+- The steps below refer to updating config.ini. You can find detailed description of config [here](config_description.md) 
+- Got several thousands of images (or much more) and not sure if random sampling will be helpful to get rolling with labeling data? 
+Take a look at [Guide to "initialization" predictions](init_pred_desription.md).
 
 # How to run semi-automated pipeline
 The flow below assumes the following: 

@@ -8,6 +8,8 @@ from pathlib import Path
 import sys
 import os
 
+random.seed(42)
+
 # Allow us to import utils
 config_dir = str(Path.cwd().parent / "utils")
 if config_dir not in sys.path:

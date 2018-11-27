@@ -83,6 +83,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
     basedir = Path(basedir)
     CV2_COLOR_LOAD_FLAG = 1
     all_predictions = []
+    all_tagged = []
     if user_folders:
         # TODO: Cross reference with ToTag
         # download latest tagging and tagged
@@ -100,11 +101,13 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
         for row in all_tagged:
             already_tagged[row[FOLDER_LOCATION]].add(row[0])
         subdirs = [subfile for subfile in basedir.iterdir() if subfile.is_dir()]
+        print("subdirs: ", subdirs)
         all_names = []
         all_image_files = [] 
         all_sizes = []
         for subdir in subdirs:
             cur_image_names = list(subdir.rglob(filetype))
+            print("Total image names: ", len(cur_image_names))
             all_image_files += [str(image_name) for image_name in cur_image_names]
             foldername = subdir.stem
             all_names += [(foldername, filename.name) for filename in cur_image_names]
@@ -113,6 +116,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
         all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
         for curindex, image in enumerate(all_image_files):
             all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
+        print("Shape of all_images: ", all_images.shape)
         all_predictions = detector.predict(all_images, min_confidence=min_confidence)
     else:
         with open(cur_tagged, 'r') as file:
@@ -153,13 +157,25 @@ if __name__ == "__main__":
     container_name = config_file["label_container_name"]
     file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagged_(.*).csv', blob.name)]
     cur_tagged = None
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
-        cur_tagged = "tagged.csv"
-    file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
     cur_tagging = None
-    if file_date:
-        block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
-        cur_tagging = "tagging.csv"
-    cur_detector = TFDetector(config_file["classes"].split(","), str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb"))
+    classes = []
+    model = None
+    if len(sys.argv) > 3 and (sys.argv[2].lower() =='init_pred'):
+        print("Using MS COCO pretrained model to detect known 90 classes. For class id <-> name mapping check this file: https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_label_map.pbtxt")
+        model = sys.argv[3]
+        print("Using model: " + model)
+        classesIDs = list(range(1, 91))
+        classes = [str(x) for x in classesIDs]
+    else:
+        classes = ["classes"].split(",")
+        model = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
+        if file_date:
+            block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
+            cur_tagged = "tagged.csv"
+        file_date = [(blob.name, blob.properties.last_modified) for blob in block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
+        if file_date:
+            block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagging.csv")
+            cur_tagging = "tagging.csv"
+
+    cur_detector = TFDetector(classes, model)
     get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, cur_tagged, cur_tagging, filetype=config_file["filetype"], min_confidence=float(config_file["min_confidence"]), user_folders=config_file["user_folders"]=="True")
