@@ -1,10 +1,10 @@
 # Active learning + object detection
-Labeling images for object detection is commonly required task to get started with Computer Vision related project.
-Good news that you do not have to label all images  (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process. 
-Please refer to this blog post that describes Active Learning and semi-automated flow: 
+Labeling images for object detection is a commonly required task to get started with Computer Vision related projects.
+The good news is that you do not have to label all images (draw bounding boxes) from scratch --- the goal of this project is to add (semi)automation to the process. 
+Please refer to this blog post that describes Active Learning and the semi-automated flow: 
   [Active Learning for Object Detection in Partnership with Conservation Metrics](https://www.microsoft.com/developerblog/2018/11/06/active-learning-for-object-detection/)
-We will use Transfer Learning and Active Learning as core Machine Learning  components of the pipeline.
- -- Transfer Learning: use powerful pre-trained on big dataset (COCO) model as a startining point for fine-tuning foe needed classes.
+We will use Transfer Learning and Active Learning as the core Machine Learning components of the pipeline.
+ -- Transfer Learning: use powerful pre-trained on big dataset (COCO) model as a starting point for fine-tuning for needed classes.
  -- Active Learning: human annotator labels small set of images (set1), trains Object Detection Model  (model1) on this set1 and then uses model1 to predict bounding boxes on images (thus pre-labeling those). Human annotator reviews mode1's predictions where the model was less confident -- and thus comes up with new set of images -- set2. Next phase will be to train more powerful model2 on bigger train set that includes set1 and set2 and use model2 prediction results as draft of labeled set3…
 The plan is to have 2 versions of pipeline set-up.
 
@@ -40,12 +40,12 @@ The flow below assumes the following:
 1) We use Tensorflow Object Detection API (Faster RCNN with Resnet 50 as default option)  to fine tune object detection. 
 2) Tensorflow Object Detection API is setup on Linux box (Azure DSVM is an option) that you can ssh to. See docs for Tensorflow Object Detection API regarding its general config.
 3) Data(images) is in Azure blob storage
-4) Human annotators use [VOTT](https://github.com/Microsoft/VoTT)  to label\revise images.  To support another tagging tool it's output (boudin boxes) need to be converted to csv form -- pull requests are welcomed!
+4) Human annotators use [VOTT](https://github.com/Microsoft/VoTT) to label/revise images.  To support another tagging tool it's output (bouding boxes) needs to be converted to csv format -- pull requests are welcomed!
 
 Here is general flow has 2 steps:
 1) Environments setup
 2) Active Learnining cycle: labeling data and running scipts to update model and feed back results for human annotator to review.  
-The whole flow is currenly automated with **4 scrips** user needs to run.
+The whole flow is currenly automated with **4 scripts** that the user needs to run.
 
 
 ### General  prep
