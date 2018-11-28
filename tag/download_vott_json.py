@@ -53,6 +53,30 @@ def  add_bkg_class_name(tag_names):
 def remove_bkg_class_name(tag_names):
     return  remove_class_name(tag_names, "NULL")
 
+def parse_prediction(prediction):
+    x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
+    x_1 = int(x_1*width)
+    x_2 = int(x_2*width)
+    y_1 = int(y_1*height)
+    y_2 = int(y_2*height)
+    valid_pred = prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0)
+    return valid_pred, x_1, x_2, y_1, y_2, height, width
+
+def get_frame(coordinates):
+    x_1, x_2, y_1, y_2, height, width = coordinates
+    curframe = {}
+    curframe["x1"] = x_1
+    curframe["y1"] = y_1
+    curframe["x2"] = x_2
+    curframe["y2"] = y_2
+    curframe["id"] = j
+    curframe["width"] = width
+    curframe["height"] = height
+    curframe["type"] = "Rectangle"
+    curframe["tags"] = tags
+    curframe["name"] = j
+    return curframe
+
 def get_image_loc(prediction, user_folders, image_loc):
     if user_folders:
         if image_loc == "":
@@ -126,43 +150,21 @@ def make_vott_output(all_predictions, output_location_param, user_folders, image
             set_predictions = defaultdict(list)
             if max_tags_per_pixel is None:
                 for prediction in predictions:
-                    x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
-                    if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
-                        x_1 = int(x_1*width)
-                        x_2 = int(x_2*width)
-                        y_1 = int(y_1*height)
-                        y_2 = int(y_2*height)
+                    valid_pred, x_1, x_2, y_1, y_2, height, width = parse_prediction(prediction)
+                    if valid_pred:
                         set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
                         file_name = prediction[FILENAME_LOCATION]
             else:
                 if predictions:
                     num_tags = np.zeros((int(predictions[0][HEIGHT_LOCATION]),int(predictions[0][WIDTH_LOCATION])), dtype=int)
                     for prediction in sorted(predictions, key=lambda x: float(x[TAG_CONFIDENCE_LOCATION]), reverse=True):
-                        x_1, x_2, y_1, y_2, height, width = map(float, prediction[TAG_STARTING_LOCATION:TAG_ENDING_LOCATION+1])
-                        if prediction[TAG_LOCATION]!="NULL" and (x_1,x_2,y_1,y_2)!=(0,0,0,0):
-                            x_1 = int(x_1*width)
-                            x_2 = int(x_2*width)
-                            y_1 = int(y_1*height)
-                            y_2 = int(y_2*height)
-                            if np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_pixel:
-                                num_tags[y_1:y_2, x_1:x_2]+=1
-                                set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
-                                file_name = prediction[FILENAME_LOCATION]
+                        valid_pred, x_1, x_2, y_1, y_2, height, width = parse_prediction(prediction)
+                        if valid_pred and np.amax(num_tags[y_1:y_2, x_1:x_2])<max_tags_per_pixel:
+                            num_tags[y_1:y_2, x_1:x_2]+=1
+                            set_predictions[(x_1, x_2, y_1, y_2, height, width)].append(prediction[TAG_LOCATION])
+                            file_name = prediction[FILENAME_LOCATION]
             for j,(coordinates, tags) in enumerate(set_predictions.items(), 1):
-                # filename,tag,x1,x2,y1,y2,true_height,true_width,image_directory
-                x_1, x_2, y_1, y_2, height, width = coordinates
-                curframe = {}
-                curframe["x1"] = x_1
-                curframe["y1"] = y_1
-                curframe["x2"] = x_2
-                curframe["y2"] = y_2
-                curframe["id"] = j
-                curframe["width"] = width
-                curframe["height"] = height
-                curframe["type"] = "Rectangle"
-                curframe["tags"] = tags
-                curframe["name"] = j
-                all_frames.append(curframe)
+                all_frames.append(get_frame(coordinates))
             dirjson["frames"][file_name] = all_frames
         dirjson["framerate"] = "1"
         dirjson["inputTags"] = ",".join(tag_names)

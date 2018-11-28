@@ -10,7 +10,7 @@ We could use pretrained model that can detect decently few dozens or more object
 of objects are on the images. The model might not provide super-accurate results however some of those might be
 useful for more target image sampling.  
 For example if you dataset has common scenes of nature or city life than using model trained on [COCO dataset](https://github.com/amikelive/coco-labels/blob/master/coco-labels-paper.txt)
-might give you an idea what images have objects that _resembles_ person, car, deer and so on. And depedning on your
+might give you an idea what images have objects that _resembles_ person, car, deer and so on. And depending on your
 scenario you might focus you initial labeling efforts on images that have or don't have a particular class.  
 
 ![Flow](images/init_predict.PNG)  
