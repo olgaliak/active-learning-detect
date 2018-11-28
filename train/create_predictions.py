@@ -167,7 +167,7 @@ if __name__ == "__main__":
         classesIDs = list(range(1, 91))
         classes = [str(x) for x in classesIDs]
     else:
-        classes = ["classes"].split(",")
+        classes = config_file["classes"].split(",")
         model = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
         if file_date:
             block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
