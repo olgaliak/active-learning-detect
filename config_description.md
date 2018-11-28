@@ -17,13 +17,13 @@ This determines whether or not the images in blob storage are within separate fo
 - classes:
 This is a comma separated list of all classes that are being tagged. Please ensure that there are no spaces in the list and only commas are used to separate names.
 - ideal_class_balance
-This is a comma separated list of requested classes distribution in images being reviewed by human expert.  
+This is a comma separated list of requested classes distribution in images being reviewed by the human expert.  
 Example (for 2-class scenario):  
 `ideal_class_balance=0.6,0.3,0.1`  
 In this example:  
-  60% of images that use will be reviewing will have at least one bbox with object class1,   
-  30%  images that have  bboxes for class  (defects),  
-  10% of images get class "NULL" -- were neither knots nor defects were detected by the model.
+  60% of images that the human expert will be reviewing will have at least one detected object of type class1 (knots),   
+  30% of images will have at least one detected object of type class2 (defects),  
+  10% of images will be of class "NULL" -- where neither knots nor defects were detected by the model.
 
 - filetype:
 This is the type of image file used. The format is a glob pattern, so *.jpg for a .jpg file or *.png for a .png file. Note that only JPEG or PNG filetypes can be used with tensorflow.
