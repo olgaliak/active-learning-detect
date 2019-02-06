@@ -85,7 +85,7 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
     basedir = Path(basedir)
     CV2_COLOR_LOAD_FLAG = 1
     all_predictions = []
-    all_images =  None #np.zeros((len([]), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
+    all_images =  None 
     all_tagged = []
     if user_folders:
         # TODO: Cross reference with ToTag
