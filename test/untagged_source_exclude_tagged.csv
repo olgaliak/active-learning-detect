@@ -1,0 +1,4 @@
+filename,class,xmin,xmax,ymin,ymax,height,width,folder,box_confidence,image_confidence
+st1194.png,knot,0.6518282,0.70353997,0.7374667,0.80387944,512,488,board_images_png,0.99921286,0.99921286
+st1611.png,knot,0.65116334,0.7139255,0.86043906,0.9666604,512,488,board_images_png,0.99822897,0.9488958
+st1611.png,knot,0.07768918,0.1141083,0.332125,0.36988598,512,488,board_images_png,0.9488958,0.9488958
