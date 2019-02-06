@@ -376,7 +376,7 @@ if __name__ == "__main__":
                                             str(csv_file_loc / "totag.csv"))
         file_date = [(blob.name, blob.properties.last_modified) for blob in
                      block_blob_service.list_blobs(container_name) if re.match(r'tagging_(.*).csv', blob.name)]
-        ideal_class_balance = config_file["ideal_class_balance"].split(",")
+
         if file_date:
             block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x: x[1])[0],
                                                 str(csv_file_loc / "tagging.csv"))
