@@ -29,8 +29,7 @@ class CreatePredictionsTestCase(unittest.TestCase):
            opener = urllib.request.URLopener()
            opener.retrieve(url, model_file)
 
-    def tearDown(self):
-        print("tear down")
+    def tearDown(self):        
         if os.path.exists("untagged.csv"):
             os.remove("untagged.csv")
         if os.path.exists("tagged_preds.csv"):
