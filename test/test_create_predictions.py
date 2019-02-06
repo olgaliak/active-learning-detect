@@ -29,7 +29,7 @@ class CreatePredictionsTestCase(unittest.TestCase):
            opener = urllib.request.URLopener()
            opener.retrieve(url, model_file)
 
-    def tearDown(self):
+    def tearDown(self):        
         if os.path.exists("untagged.csv"):
             os.remove("untagged.csv")
         if os.path.exists("tagged_preds.csv"):
@@ -65,6 +65,20 @@ class CreatePredictionsTestCase(unittest.TestCase):
                         filetype="*.png", min_confidence=0.5,
                         user_folders=True)
         self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_source.csv'), True, "generated untagged.csv is correct")
+
+    def test_get_suggestions_pretagged(self):
+        classes = 'knot,defect'
+        cur_detector = TFDetector(classes.split(','), 'model_knots.pb')
+        image_dir = "test_workdir_train"
+        untagged_output = 'untagged.csv'
+        tagged_output = 'tagged_preds.csv'
+        cur_tagged = "tagged.csv"
+        cur_tagging = None
+        get_suggestions(cur_detector, image_dir, untagged_output, tagged_output, cur_tagged, cur_tagging,
+                        filetype="*.png", min_confidence=0.5,
+                        user_folders=True)
+        self.assertEqual(filecmp.cmp('untagged.csv', 'untagged_source_exclude_tagged.csv'), True,
+                         "generated untagged.csv is correct")
 
 
 if __name__ == '__main__':

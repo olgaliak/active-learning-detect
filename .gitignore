@@ -117,4 +117,8 @@ models/*.h5
 tag/*.csv
 
 # TF exported graph files
-.pb
+*.pb
+#train/ppf_inference_graphs/frozen_inference_graph.pb
+
+# ignore configs
+work_config.ini

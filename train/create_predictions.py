@@ -7,6 +7,8 @@ import csv
 from collections import defaultdict
 import numpy as np
 
+CV2_COLOR_LOAD_FLAG = 1
+
 NUM_CHANNELS=3
 FOLDER_LOCATION=8
 
@@ -17,6 +19,7 @@ PREDICTIONS_SCHEMA_NO_FOLDER =\
 
 #name,prediction[CLASS_IDX],prediction[XMIN_IDX],prediction[XMAX_IDX],prediction[YMIN_IDX],prediction[YMAX_IDX],height,width,folder,prediction[BOX_CONFID_IDX], confidence
 BOX_CONFID_IDX = 0
+FILENAME_LOCATION = 0
 CLASS_IDX = 1
 XMIN_IDX = 3
 XMAX_IDX = 5
@@ -65,10 +68,48 @@ def make_csv_output(all_predictions: List[List[List[int]]], all_names: List[str]
                             prediction[CLASS_IDX], prediction[XMIN_IDX], prediction[XMAX_IDX],
                             prediction[YMIN_IDX], prediction[YMAX_IDX], height, width,
                             prediction[BOX_CONFID_IDX], confidence])
+    print(untagged_output, tagged_output)
+
+def get_images_for_prediction(subdir, filetype, already_tagged_this_folder, image_size):
+    '''
+    Function walks though the given directory of images and consucts ndarrays of image data that will be
+    used to get model's predictions (for subsequent review by human annotators).
+    Images that  already have been reviewed (tagged) are excluded from the list.
+    :param subdir: local directory where images are
+    :param filetype: extension of the images
+    :param already_tagged_this_folder: list of images (names), that already have been tagged and thus can be skiepped
+    :param image_size: target image size
+    :return: function retuns 3 arrays
+       - all_images_this_folder -- ndarray representation of image
+       - all_names_this_folder  -- names of the images that will get pre-tagged,
+       - all_sizes_this_folder  -- original size of images
+    '''
+    all_image_files = []
+    cur_image_names = list(subdir.rglob(filetype))
+    print("Total image names: ", len(cur_image_names))
+    all_image_files += [str(image_name) for image_name in cur_image_names]
+    foldername = subdir.stem
+    all_nonfilt_names = [(foldername, filename.name) for filename in cur_image_names]
+
+    # check if images have been tagged already
+    print("Already tagged {0} images in folder {1}.".format(len(already_tagged_this_folder), foldername))
+    all_names_this_folder = [t for t in all_nonfilt_names if t[1] not in already_tagged_this_folder]
+    print("{0} images are taken for prediction from folder {1}".format(len(all_names_this_folder), foldername))
+
+    all_filt_imagepaths = [filepath for filepath in cur_image_names if filepath.name not in already_tagged_this_folder]
+
+    # Reversed because numpy is row-major
+    all_sizes_this_folder = [cv2.imread(str(image_path), CV2_COLOR_LOAD_FLAG).shape[:2] for image_path in
+                             all_filt_imagepaths]
+    all_images_this_folder = np.zeros((len(all_names_this_folder), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
+    for curindex, image_path in enumerate(all_filt_imagepaths):
+        all_images_this_folder[curindex] = cv2.resize(cv2.imread(str(image_path), CV2_COLOR_LOAD_FLAG), image_size)
+
+    return all_images_this_folder, all_names_this_folder, all_sizes_this_folder
 
 def get_suggestions(detector, basedir: str, untagged_output: str, 
     tagged_output: str, cur_tagged: str, cur_tagging: str, min_confidence: float =.2,
-    image_size: Tuple=(1000,750), filetype: str="*.jpg", minibatchsize: int=50,
+    image_size: Tuple=(1000,750), filetype: str="*.jpg", minibatchsize: int=16,
     user_folders: bool=True):
     '''Gets suggestions from a given detector and uses them to generate VOTT tags
     
@@ -81,9 +122,9 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
     arguments to the Detector class
     '''
     basedir = Path(basedir)
-    CV2_COLOR_LOAD_FLAG = 1
-    all_predictions = []
+    all_images = None
     all_tagged = []
+    all_names = []
     if user_folders:
         # TODO: Cross reference with ToTag
         # download latest tagging and tagged
@@ -99,25 +140,26 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
                 all_tagged.extend(list(reader))
         already_tagged = defaultdict(set)
         for row in all_tagged:
-            already_tagged[row[FOLDER_LOCATION]].add(row[0])
+            already_tagged[row[FOLDER_LOCATION]].add(row[FILENAME_LOCATION])
+        print("Already tagged {0} images.".format(sum(map(len, already_tagged.values()))))
         subdirs = [subfile for subfile in basedir.iterdir() if subfile.is_dir()]
         print("subdirs: ", subdirs)
-        all_names = []
-        all_image_files = [] 
         all_sizes = []
         for subdir in subdirs:
-            cur_image_names = list(subdir.rglob(filetype))
-            print("Total image names: ", len(cur_image_names))
-            all_image_files += [str(image_name) for image_name in cur_image_names]
             foldername = subdir.stem
-            all_names += [(foldername, filename.name) for filename in cur_image_names]
-        # Reversed because numpy is row-major
-        all_sizes = [cv2.imread(image, CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
-        all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
-        for curindex, image in enumerate(all_image_files):
-            all_images[curindex] = cv2.resize(cv2.imread(image, CV2_COLOR_LOAD_FLAG), image_size)
+            already_tagged_this_folder = already_tagged[foldername]
+            all_images_this_folder, all_names_this_folder, all_sizes_this_folder =\
+                get_images_for_prediction(subdir, filetype, already_tagged_this_folder, image_size)
+
+            all_names += all_names_this_folder
+            if (all_images == None):
+                all_images = all_images_this_folder
+            else:
+                all_images = np.concatenate((all_images,all_images_this_folder), axis=0)
+            all_sizes += all_sizes_this_folder
+
         print("Shape of all_images: ", all_images.shape)
-        all_predictions = detector.predict(all_images, min_confidence=min_confidence)
+        all_predictions = detector.predict(all_images, min_confidence=min_confidence, batch_size=minibatchsize)
     else:
         with open(cur_tagged, 'r') as file:
             reader = csv.reader(file)
@@ -127,13 +169,11 @@ def get_suggestions(detector, basedir: str, untagged_output: str,
             reader = csv.reader(file)
             next(reader, None)
             already_tagged |= {row[0] for row in reader}
-        all_image_files = list(basedir.rglob(filetype))
-        all_names = [filename.name for filename in all_image_files]
-        all_sizes = [cv2.imread(str(image), CV2_COLOR_LOAD_FLAG).shape[:2] for image in all_image_files]
-        all_images = np.zeros((len(all_image_files), *reversed(image_size), NUM_CHANNELS), dtype=np.uint8)
-        for curindex, image in enumerate(all_image_files):
-            all_images[curindex] = cv2.resize(cv2.imread(str(image), CV2_COLOR_LOAD_FLAG), image_size)
-        all_predictions = detector.predict(all_images, batch_size=2, min_confidence=min_confidence)
+
+        already_tagged_this_folder = already_tagged
+        all_images, all_names, all_sizes = \
+            get_images_for_prediction(basedir, filetype, already_tagged_this_folder, image_size)
+        all_predictions = detector.predict(all_images, batch_size=1, min_confidence=min_confidence)
     make_csv_output(all_predictions, all_names, all_sizes, untagged_output, tagged_output, already_tagged, user_folders)
 
 if __name__ == "__main__":
@@ -169,6 +209,7 @@ if __name__ == "__main__":
     else:
         classes = config_file["classes"].split(",")
         model = str(Path(config_file["inference_output_dir"])/"frozen_inference_graph.pb")
+        print("using model: ", model)
         if file_date:
             block_blob_service.get_blob_to_path(container_name, max(file_date, key=lambda x:x[1])[0], "tagged.csv")
             cur_tagged = "tagged.csv"
